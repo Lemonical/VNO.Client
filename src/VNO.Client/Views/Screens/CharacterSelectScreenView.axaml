@@ -1,0 +1,155 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:VNO.Client.ViewModels"
+             xmlns:conv="using:VNO.Client.Converters"
+             x:Class="VNO.Client.Views.CharacterSelectScreenView"
+             x:DataType="vm:CharacterSelectScreenViewModel">
+
+    <UserControl.Resources>
+        <conv:ThemeImageConverter x:Key="ThemeImage" />
+        <conv:ThemeBrushConverter x:Key="ThemeBrush" />
+        <conv:ThemeFontConverter x:Key="ThemeFont" />
+        <conv:ThemeFontSizeConverter x:Key="ThemeFontSize" />
+    </UserControl.Resources>
+
+    <UserControl.Styles>
+        <!-- the legacy TPanel and TEdit controls had no hover, focus, or state styling -->
+        <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{Binding $parent[TextBox].Background}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{Binding $parent[TextBox].Background}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
+            <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
+        </Style>
+        <Style Selector="Button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
+            <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
+        </Style>
+        <Style Selector="Button:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
+        </Style>
+        <!-- the active roster page number is shown bold -->
+        <Style Selector="Button.active">
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+    </UserControl.Styles>
+
+    <!-- Ports groupbox_charselect from Form15. The character grid was drawn on the
+         skin in the original, here it is a real list placed over the skin in the same
+         left area. Controls use the original DFM coordinates, which match the skin at
+         its native pixel size (726x679). The DFM design-time box was 761x689, but
+         stretching the skin to that box shifts its drawn boxes off the controls, so the
+         canvas and image use the native skin size -->
+    <Canvas Width="726" Height="679">
+
+        <!-- image_bg_charselect @0,0, theme charselect.png at its native size -->
+        <Image Canvas.Left="0" Canvas.Top="0" Stretch="None"
+               Source="{Binding Theme, Converter={StaticResource ThemeImage}, ConverterParameter=charselect.png}" />
+
+        <!-- label_charname @59,42 227x40, the selected character name -->
+        <TextBlock Canvas.Left="59" Canvas.Top="42" Width="227" Height="40"
+                   VerticalAlignment="Center"
+                   FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=label_charname}"
+                   FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=label_charname}"
+                   Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=label_charname_font_color}"
+                   Text="{Binding SelectedName}" />
+
+        <!-- The roster grid, a five by five page of cells drawn on the skin at
+             its cell coordinates. Each cell shows its on or off roster image -->
+        <ItemsControl Canvas.Left="85" Canvas.Top="160" Width="345" Height="345"
+                      ItemsSource="{Binding PageSlots}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <UniformGrid Rows="5" Columns="5" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:CharacterSlotViewModel">
+                    <Button Width="62" Height="62" Margin="3" Padding="0"
+                            MinWidth="0" MinHeight="0" BorderThickness="0"
+                            Background="Transparent"
+                            Command="{Binding $parent[ItemsControl].((vm:CharacterSelectScreenViewModel)DataContext).SelectSlotCommand}"
+                            CommandParameter="{Binding}"
+                            ToolTip.Tip="{Binding Name}">
+                        <Image Width="60" Height="60" Stretch="Fill" Source="{Binding CellImage}" />
+                    </Button>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- image_btn_demopage_1..4 @446, page selectors, hidden past the last page.
+             The active page is shown bold -->
+        <Button Canvas.Left="446" Canvas.Top="163" Width="18" Height="18" Padding="0"
+                MinWidth="0" MinHeight="0" Classes.active="{Binding IsPage1}"
+                Content="1" Command="{Binding ShowPageCommand}" CommandParameter="1" />
+        <Button Canvas.Left="446" Canvas.Top="186" Width="18" Height="18" Padding="0"
+                MinWidth="0" MinHeight="0" Classes.active="{Binding IsPage2}"
+                Content="2" Command="{Binding ShowPageCommand}" CommandParameter="2"
+                IsVisible="{Binding HasPage2}" />
+        <Button Canvas.Left="446" Canvas.Top="209" Width="18" Height="18" Padding="0"
+                MinWidth="0" MinHeight="0" Classes.active="{Binding IsPage3}"
+                Content="3" Command="{Binding ShowPageCommand}" CommandParameter="3"
+                IsVisible="{Binding HasPage3}" />
+        <Button Canvas.Left="446" Canvas.Top="232" Width="18" Height="18" Padding="0"
+                MinWidth="0" MinHeight="0" Classes.active="{Binding IsPage4}"
+                Content="4" Command="{Binding ShowPageCommand}" CommandParameter="4"
+                IsVisible="{Binding HasPage4}" />
+
+        <!-- image_bigart preview @473,42 210x590, the selected character art -->
+        <Image Canvas.Left="473" Canvas.Top="42" Width="210" Height="590"
+               Stretch="Uniform" Source="{Binding SelectedBigArt}" />
+
+        <!-- label_charused @83,539 346x18, red Verdana 15, shown when the slot is taken -->
+        <TextBlock Canvas.Left="83" Canvas.Top="539" Width="346" Height="18"
+                   TextAlignment="Center" FontFamily="Verdana" FontSize="15"
+                   Foreground="#FF0000" IsVisible="{Binding ShowTakenNotice}"
+                   Text="This character is already used" />
+
+        <!-- Panel1 "Random" @83,512 60x21, design panel_random keys -->
+        <Button Canvas.Left="83" Canvas.Top="512" Width="60" Height="21"
+                MinWidth="0" MinHeight="0" Padding="0"
+                BorderThickness="0" CornerRadius="0"
+                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=panel_random}"
+                FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=panel_random}"
+                Background="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=panel_random}"
+                Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=panel_random_font_color}"
+                Content="Random" Command="{Binding RandomCommand}" />
+
+        <!-- Edit4 name entry @153,512 132x21, bg white -->
+        <TextBox Canvas.Left="153" Canvas.Top="512" Width="132" Height="21"
+                 Padding="2,0" VerticalContentAlignment="Center"
+                 BorderThickness="0" CornerRadius="0"
+                 FontFamily="Tahoma" FontSize="10"
+                 Background="#FFFFFF" Foreground="#000000"
+                 Text="{Binding TypedName}" />
+
+        <!-- edit_password @296,512 60x21, password for locked characters, design edit_password -->
+        <TextBox Canvas.Left="296" Canvas.Top="512" Width="60" Height="21"
+                 MinWidth="0" MinHeight="0" Padding="2,0"
+                 VerticalContentAlignment="Center" PasswordChar="*"
+                 BorderThickness="0" CornerRadius="0"
+                 FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=edit_password}"
+                 FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=edit_password}"
+                 Background="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=edit_password}"
+                 Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=edit_password_font_color}"
+                 ToolTip.Tip="Character password"
+                 Text="{Binding CharacterPassword}" />
+
+        <!-- Panel2 "Select" @367,512 60x21, design panel_select keys -->
+        <Button Canvas.Left="367" Canvas.Top="512" Width="60" Height="21"
+                MinWidth="0" MinHeight="0" Padding="0"
+                BorderThickness="0" CornerRadius="0"
+                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=panel_select}"
+                FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=panel_select}"
+                Background="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=panel_select}"
+                Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=panel_select_font_color}"
+                Content="Select" Command="{Binding SelectCommand}" />
+    </Canvas>
+</UserControl>

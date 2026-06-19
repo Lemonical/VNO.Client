@@ -1,0 +1,116 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:VNO.Client.ViewModels"
+             x:Class="VNO.Client.Views.LoginScreenView"
+             x:DataType="vm:LoginScreenViewModel">
+
+    <!-- Ports groupbox_login from Form15. Control positions and sizes are the DFM
+         values. The skin, colors, and fonts come from the player theme folder via
+         the theme service, like the legacy design.ini driven login. The skin draws
+         unscaled from the top left, matching TImage without Stretch -->
+
+    <UserControl.Styles>
+        <!-- the legacy TEdit and TPanel controls had no hover, focus, or pressed
+             styling, keep the themed colors static across interaction states -->
+        <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{Binding $parent[TextBox].Background}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{Binding $parent[TextBox].Background}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
+            <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
+        </Style>
+        <Style Selector="Button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
+            <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
+        </Style>
+        <Style Selector="Button:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
+        </Style>
+    </UserControl.Styles>
+
+    <Canvas Width="456" Height="387">
+
+        <!-- image_bg_login @0,0, theme login.png drawn at its native size -->
+        <Image Canvas.Left="0" Canvas.Top="0" Stretch="None"
+               Source="{Binding BackgroundImage}" />
+
+        <!-- label_as @3,3, caption AS:ERROR until the master link connects -->
+        <TextBlock Canvas.Left="3" Canvas.Top="3"
+                   FontFamily="{Binding AsFontFamily}" FontSize="{Binding AsFontSize}"
+                   Foreground="{Binding AsForeground}" Text="{Binding AuthStatus}" />
+
+        <!-- label_version, right justified with its right edge at 447 like the DFM -->
+        <TextBlock Canvas.Right="9" Canvas.Top="5" TextAlignment="Right"
+                   FontFamily="{Binding VersionFontFamily}" FontSize="{Binding VersionFontSize}"
+                   Foreground="{Binding VersionForeground}" Text="{Binding Version}" />
+
+        <!-- edit_username @57,113 151x19 -->
+        <TextBox Canvas.Left="57" Canvas.Top="113" Width="151" Height="19"
+                 MinWidth="0" MinHeight="0" Padding="2,0"
+                 VerticalContentAlignment="Center"
+                 BorderThickness="0" CornerRadius="0"
+                 FontFamily="{Binding UserNameFontFamily}" FontSize="{Binding UserNameFontSize}"
+                 Background="{Binding UserNameBackground}"
+                 Foreground="{Binding UserNameForeground}"
+                 CaretBrush="{Binding UserNameForeground}"
+                 Text="{Binding UserName}" />
+
+        <!-- edit_password @57,140 151x19 -->
+        <TextBox Canvas.Left="57" Canvas.Top="140" Width="151" Height="19"
+                 MinWidth="0" MinHeight="0" Padding="2,0"
+                 VerticalContentAlignment="Center"
+                 BorderThickness="0" CornerRadius="0" PasswordChar="*"
+                 FontFamily="{Binding PasswordFontFamily}" FontSize="{Binding PasswordFontSize}"
+                 Background="{Binding PasswordBackground}"
+                 Foreground="{Binding PasswordForeground}"
+                 CaretBrush="{Binding PasswordForeground}"
+                 Text="{Binding Password}" />
+
+        <!-- checkbox_rememberme @86,165 13x13, the Fluent glyph is 20px so the
+             position centers it on the original 13px box -->
+        <CheckBox Canvas.Left="82" Canvas.Top="161" Width="20" Height="20"
+                  MinWidth="0" MinHeight="0" Padding="0"
+                  IsChecked="{Binding RememberMe}" />
+
+        <!-- Label7 @105,165 -->
+        <TextBlock Canvas.Left="105" Canvas.Top="165"
+                   FontFamily="{Binding RememberMeFontFamily}" FontSize="{Binding RememberMeFontSize}"
+                   Foreground="{Binding RememberMeForeground}" Text="Remember Me" />
+
+        <!-- panel_btn_identify @57,185 151x39 -->
+        <Button Canvas.Left="57" Canvas.Top="185" Width="151" Height="39"
+                MinWidth="0" MinHeight="0" Padding="0"
+                BorderThickness="0" CornerRadius="0"
+                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                FontFamily="{Binding IdentifyFontFamily}" FontSize="{Binding IdentifyFontSize}"
+                Background="{Binding IdentifyBackground}" Foreground="{Binding IdentifyForeground}"
+                Content="Identify" Command="{Binding IdentifyCommand}" />
+
+        <!-- panel_btn_createaccount @57,232 151x24 -->
+        <Button Canvas.Left="57" Canvas.Top="232" Width="151" Height="24"
+                MinWidth="0" MinHeight="0" Padding="0"
+                BorderThickness="0" CornerRadius="0"
+                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                FontFamily="{Binding CreateAccountFontFamily}" FontSize="{Binding CreateAccountFontSize}"
+                Background="{Binding CreateAccountBackground}" Foreground="{Binding CreateAccountForeground}"
+                Content="Create Account" Command="{Binding CreateAccountCommand}" />
+
+        <!-- label_taken @59,263, parent font Tahoma 11px in the DFM -->
+        <TextBlock Canvas.Left="59" Canvas.Top="263" FontFamily="Tahoma" FontSize="11"
+                   Foreground="#FF0000" Text="{Binding TakenNotice}" />
+
+        <!-- RichEdit1 news panel @232,113 167x143, DFM colors clSilver and clWhite -->
+        <TextBox Canvas.Left="232" Canvas.Top="113" Width="167" Height="143"
+                 MinWidth="0" MinHeight="0"
+                 BorderThickness="0" CornerRadius="0" Padding="2"
+                 FontFamily="Tahoma" FontSize="11"
+                 Background="#C0C0C0" Foreground="#FFFFFF"
+                 IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+                 Text="{Binding News}" />
+    </Canvas>
+</UserControl>

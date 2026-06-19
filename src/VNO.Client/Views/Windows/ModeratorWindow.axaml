@@ -1,0 +1,94 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:VNO.Client.ViewModels"
+        x:Class="VNO.Client.Views.Windows.ModeratorWindow"
+        x:DataType="vm:ModeratorViewModel"
+        Title="Visual Novel Online Moderator Interface."
+        Width="746" Height="379"
+        CanResize="False">
+
+    <!-- Ports Form1. Coordinates match the original buttons and lists one to one -->
+    <Canvas Width="746" Height="379">
+
+        <!-- Left action column @8 -->
+        <Button Canvas.Left="8" Canvas.Top="8" Width="75" Height="25" Content="Char Lookup"
+                Command="{Binding CharLookupCommand}" />
+        <Button Canvas.Left="8" Canvas.Top="39" Width="75" Height="25" Content="Kick"
+                Command="{Binding KickCommand}" />
+        <Button Canvas.Left="8" Canvas.Top="70" Width="75" Height="25" Content="Mute"
+                Command="{Binding MuteCommand}" />
+        <Button Canvas.Left="8" Canvas.Top="101" Width="75" Height="25" Content="Unmute"
+                Command="{Binding UnmuteCommand}" />
+        <Button Canvas.Left="8" Canvas.Top="132" Width="75" Height="25" Content="DJ on"
+                Command="{Binding DjOnCommand}" />
+        <Button Canvas.Left="8" Canvas.Top="163" Width="75" Height="25" Content="DJ off"
+                Command="{Binding DjOffCommand}" />
+        <Button Canvas.Left="8" Canvas.Top="194" Width="75" Height="25" Content="RoomIP"
+                Command="{Binding RoomIpCommand}" />
+        <Button Canvas.Left="8" Canvas.Top="225" Width="75" Height="25" Content="Mass Mute"
+                Command="{Binding MassMuteCommand}" />
+        <Button Canvas.Left="8" Canvas.Top="256" Width="75" Height="25" Content="Mass Unmute"
+                Command="{Binding MassUnmuteCommand}" />
+
+        <!-- Button20 and Button21 were hidden in the original, the target inputs
+             reuse that free space so the tool stays usable -->
+        <Button Canvas.Left="8" Canvas.Top="287" Width="75" Height="25" Content="Lock Room"
+                IsVisible="False" Command="{Binding LockRoomCommand}" />
+        <Button Canvas.Left="8" Canvas.Top="318" Width="75" Height="25" Content="Unlock Room"
+                IsVisible="False" Command="{Binding UnlockRoomCommand}" />
+        <TextBox Canvas.Left="8" Canvas.Top="287" Width="225" Height="24"
+                 PlaceholderText="Player id" Text="{Binding TargetUserId}" />
+        <TextBox Canvas.Left="8" Canvas.Top="313" Width="225" Height="24"
+                 PlaceholderText="Address" Text="{Binding TargetAddress}" />
+
+        <!-- Room and history lists @89 -->
+        <ListBox Canvas.Left="89" Canvas.Top="8" Width="145" Height="180"
+                 ItemsSource="{Binding Rooms}" />
+        <ListBox Canvas.Left="89" Canvas.Top="194" Width="145" Height="91"
+                 ItemsSource="{Binding History}" />
+
+        <!-- Right action column @240. Panel1 AUTH shows staff status, green once
+             granted and red until then, matching the legacy staff indicator -->
+        <Border Canvas.Left="240" Canvas.Top="8" Width="75" Height="25" Background="Red"
+                IsVisible="{Binding !IsAuthenticated}">
+            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                       FontWeight="Bold" Text="{Binding AuthState}" />
+        </Border>
+        <Border Canvas.Left="240" Canvas.Top="8" Width="75" Height="25" Background="Green"
+                IsVisible="{Binding IsAuthenticated}">
+            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                       FontWeight="Bold" Text="{Binding AuthState}" />
+        </Border>
+        <Button Canvas.Left="240" Canvas.Top="39" Width="75" Height="25" Content="IP"
+                Command="{Binding IpCommand}" />
+        <Button Canvas.Left="240" Canvas.Top="70" Width="75" Height="25" Content="User Lookup"
+                Command="{Binding UserLookupCommand}" />
+        <Button Canvas.Left="240" Canvas.Top="101" Width="75" Height="25" Content="Ban User"
+                Command="{Binding BanUserCommand}" />
+        <Button Canvas.Left="240" Canvas.Top="132" Width="75" Height="25" Content="Unban User"
+                Command="{Binding UnbanUserCommand}" />
+        <Button Canvas.Left="240" Canvas.Top="163" Width="75" Height="25" Content="Ban IP"
+                Command="{Binding BanIpCommand}" />
+        <Button Canvas.Left="240" Canvas.Top="194" Width="75" Height="25" Content="Unban IP"
+                Command="{Binding UnbanIpCommand}" />
+        <Button Canvas.Left="240" Canvas.Top="224" Width="75" Height="25" Content="ID Disconnect"
+                Command="{Binding IdDisconnectCommand}" />
+        <Button Canvas.Left="240" Canvas.Top="256" Width="75" Height="25" Content="ID Mute"
+                Command="{Binding IdMuteCommand}" />
+        <Button Canvas.Left="240" Canvas.Top="287" Width="75" Height="25" Content="ID Ignore"
+                Command="{Binding IdIgnoreCommand}" />
+        <Button Canvas.Left="240" Canvas.Top="318" Width="75" Height="25" Content="ID Isolate"
+                Command="{Binding IdIsolateCommand}" />
+
+        <!-- Main user list @321,8 415x335 -->
+        <ListBox Canvas.Left="321" Canvas.Top="8" Width="415" Height="335"
+                 ItemsSource="{Binding Users}" SelectedItem="{Binding SelectedUser}" />
+
+        <!-- Edit4 status line @8,349 was full width, split here into status and
+             reason so reasons can be typed -->
+        <TextBox Canvas.Left="8" Canvas.Top="349" Width="307" Height="22"
+                 IsReadOnly="True" Text="{Binding Status}" />
+        <TextBox Canvas.Left="321" Canvas.Top="349" Width="415" Height="22"
+                 PlaceholderText="Reason" Text="{Binding Reason}" />
+    </Canvas>
+</Window>

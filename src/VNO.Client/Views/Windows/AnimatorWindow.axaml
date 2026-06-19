@@ -1,0 +1,186 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:VNO.Client.ViewModels"
+        x:Class="VNO.Client.Views.Windows.AnimatorWindow"
+        x:DataType="vm:AnimatorViewModel"
+        Title="Visual Novel Online Animator Interface"
+        Width="298" Height="419"
+        CanResize="False">
+
+    <!-- Ports Form7. The PageControl filled 300x400 with Edit10 status beneath -->
+    <DockPanel>
+        <TextBox DockPanel.Dock="Bottom" Height="22" IsReadOnly="True" Text="{Binding Status}" />
+
+        <TabControl>
+
+            <!-- TabSheet1 Self-HP/MP edit -->
+            <TabItem Header="Self-HP/MP edit">
+                <Canvas>
+                    <ComboBox Canvas.Left="16" Canvas.Top="12" Width="121" />
+                    <Button Canvas.Left="16" Canvas.Top="40" Width="121" Height="25"
+                            Content="Set HP Font Color" Command="{Binding SetHealthColorCommand}" />
+                    <ComboBox Canvas.Left="154" Canvas.Top="12" Width="121" />
+                    <Button Canvas.Left="154" Canvas.Top="40" Width="121" Height="25"
+                            Content="Set MP Font Color" Command="{Binding SetManaColorCommand}" />
+
+                    <!-- HP plus column @16, HP minus column @76 -->
+                    <Button Canvas.Left="16" Canvas.Top="74" Width="54" Height="25" Content="+1 HP"
+                            Command="{Binding AdjustHealthCommand}" CommandParameter="1" />
+                    <Button Canvas.Left="16" Canvas.Top="103" Width="54" Height="25" Content="+10 HP"
+                            Command="{Binding AdjustHealthCommand}" CommandParameter="10" />
+                    <Button Canvas.Left="16" Canvas.Top="134" Width="54" Height="25" Content="+100 HP"
+                            Command="{Binding AdjustHealthCommand}" CommandParameter="100" />
+                    <Button Canvas.Left="16" Canvas.Top="165" Width="54" Height="25" Content="+1000 HP"
+                            Command="{Binding AdjustHealthCommand}" CommandParameter="1000" />
+                    <Button Canvas.Left="76" Canvas.Top="74" Width="56" Height="25" Content="-1 HP"
+                            Command="{Binding AdjustHealthCommand}" CommandParameter="-1" />
+                    <Button Canvas.Left="76" Canvas.Top="105" Width="56" Height="25" Content="-10 HP"
+                            Command="{Binding AdjustHealthCommand}" CommandParameter="-10" />
+                    <Button Canvas.Left="76" Canvas.Top="136" Width="56" Height="25" Content="-100 HP"
+                            Command="{Binding AdjustHealthCommand}" CommandParameter="-100" />
+                    <Button Canvas.Left="76" Canvas.Top="165" Width="56" Height="25" Content="-1000 HP"
+                            Command="{Binding AdjustHealthCommand}" CommandParameter="-1000" />
+
+                    <!-- MP plus column @138, MP minus column @204 -->
+                    <Button Canvas.Left="138" Canvas.Top="74" Width="60" Height="25" Content="+1 MP"
+                            Command="{Binding AdjustManaCommand}" CommandParameter="1" />
+                    <Button Canvas.Left="138" Canvas.Top="105" Width="60" Height="25" Content="+10 MP"
+                            Command="{Binding AdjustManaCommand}" CommandParameter="10" />
+                    <Button Canvas.Left="138" Canvas.Top="134" Width="60" Height="25" Content="+100 MP"
+                            Command="{Binding AdjustManaCommand}" CommandParameter="100" />
+                    <Button Canvas.Left="138" Canvas.Top="165" Width="60" Height="25" Content="+1000 MP"
+                            Command="{Binding AdjustManaCommand}" CommandParameter="1000" />
+                    <Button Canvas.Left="204" Canvas.Top="74" Width="58" Height="25" Content="-1 MP"
+                            Command="{Binding AdjustManaCommand}" CommandParameter="-1" />
+                    <Button Canvas.Left="204" Canvas.Top="105" Width="58" Height="25" Content="-10 MP"
+                            Command="{Binding AdjustManaCommand}" CommandParameter="-10" />
+                    <Button Canvas.Left="204" Canvas.Top="136" Width="58" Height="25" Content="-100 MP"
+                            Command="{Binding AdjustManaCommand}" CommandParameter="-100" />
+                    <Button Canvas.Left="204" Canvas.Top="165" Width="58" Height="25" Content="-1000 MP"
+                            Command="{Binding AdjustManaCommand}" CommandParameter="-1000" />
+
+                    <!-- Set value row @218 -->
+                    <TextBox Canvas.Left="16" Canvas.Top="216" Width="121" Height="22"
+                             Text="{Binding OwnHealth}" />
+                    <Button Canvas.Left="143" Canvas.Top="214" Width="55" Height="25" Content="Set HP"
+                            Command="{Binding SetOwnHealthCommand}" />
+                    <Button Canvas.Left="204" Canvas.Top="214" Width="71" Height="25" Content="Set MaxHP"
+                            Command="{Binding SetOwnMaxHealthCommand}" />
+                    <TextBox Canvas.Left="16" Canvas.Top="243" Width="121" Height="22"
+                             Text="{Binding OwnMana}" />
+                    <Button Canvas.Left="143" Canvas.Top="245" Width="55" Height="25" Content="Set MP"
+                            Command="{Binding SetOwnManaCommand}" />
+                    <Button Canvas.Left="204" Canvas.Top="245" Width="71" Height="25" Content="Set MaxMP"
+                            Command="{Binding SetOwnMaxManaCommand}" />
+
+                    <Button Canvas.Left="16" Canvas.Top="289" Width="80" Height="25"
+                            Content="Set everything" Command="{Binding SetEverythingCommand}" />
+                    <Border Canvas.Left="100" Canvas.Top="289" Width="80" Height="25" Background="Red">
+                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   FontWeight="Bold" Text="{Binding AuthState}" />
+                    </Border>
+                </Canvas>
+            </TabItem>
+
+            <!-- TabSheet2 Inventory -->
+            <TabItem Header="Inventory">
+                <Canvas>
+                    <TextBlock Canvas.Left="76" Canvas.Top="0" Text="Give Item's" />
+                    <ListBox Canvas.Left="3" Canvas.Top="19" Width="286" Height="206"
+                             ItemsSource="{Binding Items}" />
+                    <TextBox Canvas.Left="3" Canvas.Top="238" Width="169" Height="22"
+                             Text="{Binding ItemUser}" />
+                    <TextBox Canvas.Left="3" Canvas.Top="265" Width="75" Height="22"
+                             Text="{Binding ItemAmount}" />
+                    <Button Canvas.Left="84" Canvas.Top="265" Width="75" Height="25" Content="Send"
+                            Command="{Binding GiveItemCommand}" />
+                    <Button Canvas.Left="154" Canvas.Top="265" Width="63" Height="25" Content="Check"
+                            Command="{Binding CheckItemCommand}" />
+                    <TextBlock Canvas.Left="3" Canvas.Top="295" Text="Give Credits" />
+                    <TextBox Canvas.Left="3" Canvas.Top="314" Width="169" Height="22"
+                             Text="{Binding CreditUser}" />
+                    <TextBox Canvas.Left="3" Canvas.Top="341" Width="75" Height="22"
+                             Text="{Binding CreditAmount}" />
+                    <Button Canvas.Left="84" Canvas.Top="341" Width="75" Height="25" Content="Send"
+                            Command="{Binding GiveCreditsCommand}" />
+                    <Button Canvas.Left="154" Canvas.Top="341" Width="63" Height="25" Content="Check"
+                            Command="{Binding CheckCreditsCommand}" />
+                </Canvas>
+            </TabItem>
+
+            <!-- TabSheet3 Server -->
+            <TabItem Header="Server">
+                <Canvas>
+                    <TextBlock Canvas.Left="47" Canvas.Top="3" Text="Countdown Timer" />
+                    <Button Canvas.Left="1" Canvas.Top="20" Width="73" Height="25" Content="Timer Start"
+                            Command="{Binding StartTimerCommand}" />
+                    <TextBox Canvas.Left="80" Canvas.Top="22" Width="121" Height="22"
+                             Text="{Binding TimerSeconds}" />
+                    <TextBlock Canvas.Left="47" Canvas.Top="51" Text="Server Wide Message" />
+                    <Button Canvas.Left="1" Canvas.Top="70" Width="58" Height="25" Content="Send"
+                            Command="{Binding SendBroadcastCommand}" />
+                    <TextBox Canvas.Left="63" Canvas.Top="70" Width="210" Height="22"
+                             Text="{Binding Broadcast}" />
+                    <Button Canvas.Left="1" Canvas.Top="101" Width="112" Height="25"
+                            Content="Hide roomcount" Command="{Binding HideRoomCountCommand}" />
+                    <TextBlock Canvas.Left="47" Canvas.Top="132" Text="Image/Music Streaming" />
+                    <Button Canvas.Left="1" Canvas.Top="149" Width="56" Height="25" Content="Send"
+                            Command="{Binding StreamImageCommand}" />
+                    <TextBox Canvas.Left="63" Canvas.Top="151" Width="210" Height="22"
+                             Text="{Binding ImageUrl}" />
+                    <Button Canvas.Left="1" Canvas.Top="180" Width="56" Height="25" Content="Play"
+                            Command="{Binding StreamMusicCommand}" />
+                    <TextBox Canvas.Left="63" Canvas.Top="180" Width="210" Height="22"
+                             Text="{Binding MusicUrl}" />
+                    <TextBlock Canvas.Left="47" Canvas.Top="208" Text="Replay File Playback" />
+                    <Button Canvas.Left="1" Canvas.Top="227" Width="75" Height="25" Content="Start Replay"
+                            Command="{Binding StartReplayCommand}" />
+                    <TextBox Canvas.Left="82" Canvas.Top="231" Width="151" Height="22"
+                             Text="{Binding ReplayFile}" />
+                    <Button Canvas.Left="1" Canvas.Top="258" Width="75" Height="25" Content="Stop Replay"
+                            Command="{Binding StopReplayCommand}" />
+                    <TextBox Canvas.Left="82" Canvas.Top="258" Width="103" Height="22"
+                             Text="{Binding ReplayDelay}" />
+                    <TextBlock Canvas.Left="16" Canvas.Top="293" Text="Hide Feature Toggle" />
+                    <Button Canvas.Left="3" Canvas.Top="312" Width="116" Height="25"
+                            Content="Allow people to hide" Command="{Binding AllowHideCommand}" />
+                    <Button Canvas.Left="3" Canvas.Top="343" Width="116" Height="25"
+                            Content="Disallow people to hide" Command="{Binding DisallowHideCommand}" />
+                    <TextBlock Canvas.Left="156" Canvas.Top="293" Text="Self HP Edit Toggle" />
+                    <Button Canvas.Left="137" Canvas.Top="312" Width="115" Height="25"
+                            Content="Toggle self-HP edit on" Command="{Binding SelfHpEditOnCommand}" />
+                    <Button Canvas.Left="137" Canvas.Top="343" Width="115" Height="25"
+                            Content="Toggle self-HP edit off" Command="{Binding SelfHpEditOffCommand}" />
+                </Canvas>
+            </TabItem>
+
+            <!-- TabSheet4 HP/MP edit, eight identical target slots -->
+            <TabItem Header="HP/MP edit">
+                <ItemsControl ItemsSource="{Binding EditSlots}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="2" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:StatEditSlotViewModel">
+                            <Border Margin="2" BorderBrush="#888" BorderThickness="1" Padding="2">
+                                <StackPanel Spacing="2">
+                                    <TextBox Text="{Binding CharId}" />
+                                    <StackPanel Orientation="Horizontal" Spacing="2">
+                                        <TextBox Width="44" Text="{Binding Health}" />
+                                        <TextBox Width="44" Text="{Binding Mana}" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Spacing="2">
+                                        <Button Content="Edit" Command="{Binding EditValueCommand}" />
+                                        <Button Content="Max" Command="{Binding SetMaxCommand}" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>

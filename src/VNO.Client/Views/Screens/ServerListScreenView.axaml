@@ -1,0 +1,208 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:VNO.Client.ViewModels"
+             xmlns:conv="using:VNO.Client.Converters"
+             x:Class="VNO.Client.Views.ServerListScreenView"
+             x:DataType="vm:ServerListScreenViewModel">
+
+    <UserControl.Resources>
+        <conv:ThemeImageConverter x:Key="ThemeImage" />
+        <conv:ThemeBrushConverter x:Key="ThemeBrush" />
+        <conv:ThemeFontConverter x:Key="ThemeFont" />
+        <conv:ThemeFontSizeConverter x:Key="ThemeFontSize" />
+        <conv:ThemeActivePanelConverter x:Key="ThemeActivePanel" />
+    </UserControl.Resources>
+
+    <!-- Ports groupbox_srvrlst from Form15. Controls sit at the original DFM
+         coordinates over the masterlist skin at its native pixel size, drawn
+         unscaled like TImage without Stretch. Colors and fonts come from the
+         player theme design.ini. The community tab panel sat off canvas at
+         749,61 in the DFM, so like the original it is not shown -->
+
+    <UserControl.Styles>
+        <!-- the legacy TPanel and TMemo controls had no hover or focus styling -->
+        <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{Binding $parent[TextBox].Background}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{Binding $parent[TextBox].Background}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
+            <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
+        </Style>
+        <Style Selector="Button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
+            <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
+        </Style>
+        <Style Selector="Button:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
+        </Style>
+    </UserControl.Styles>
+
+    <Canvas Width="630" Height="400">
+
+        <!-- image_bg_srvrlst @0,0, theme masterlist.png at its native size -->
+        <Image Canvas.Left="0" Canvas.Top="0" Stretch="None"
+               Source="{Binding Theme, Converter={StaticResource ThemeImage}, ConverterParameter=masterlist.png}" />
+
+        <!-- panel_btn_srvrlst_vip "Servers" @133,36 192x39 -->
+        <Button Canvas.Left="133" Canvas.Top="36" Width="192" Height="39"
+                MinWidth="0" MinHeight="0" Padding="0" BorderThickness="0" CornerRadius="0"
+                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=panel_btn_srvrlst_vip}"
+                FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=panel_btn_srvrlst_vip}"
+                Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=panel_btn_srvrlst_vip_font_color}"
+                Content="Servers" Command="{Binding ShowServersCommand}">
+            <Button.Background>
+                <MultiBinding Converter="{StaticResource ThemeActivePanel}" ConverterParameter="panel_btn_srvrlst_vip">
+                    <Binding Path="Theme" />
+                    <Binding Path="IsServersTab" />
+                </MultiBinding>
+            </Button.Background>
+        </Button>
+
+        <!-- panel_btn_srvrlst_favorite "Favorites" @331,36 192x39 -->
+        <Button Canvas.Left="331" Canvas.Top="36" Width="192" Height="39"
+                MinWidth="0" MinHeight="0" Padding="0" BorderThickness="0" CornerRadius="0"
+                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=panel_btn_srvrlst_favorite}"
+                FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=panel_btn_srvrlst_favorite}"
+                Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=panel_btn_srvrlst_favorite_font_color}"
+                Content="Favorites" Command="{Binding ShowFavoritesCommand}">
+            <Button.Background>
+                <MultiBinding Converter="{StaticResource ThemeActivePanel}" ConverterParameter="panel_btn_srvrlst_favorite">
+                    <Binding Path="Theme" />
+                    <Binding Path="IsFavoritesTab" />
+                </MultiBinding>
+            </Button.Background>
+        </Button>
+
+        <!-- Gauge1 loading bar @132,79 177x17, design gauge1_back and gauge1_fore -->
+        <ProgressBar Canvas.Left="132" Canvas.Top="79" Width="177" Height="17"
+                     MinWidth="0" MinHeight="0"
+                     Minimum="0" Maximum="100" Value="{Binding LoadProgress}"
+                     Background="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=gauge1_back}"
+                     Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=gauge1_fore}" />
+
+        <!-- label_load @178,81, loading text over the gauge -->
+        <TextBlock Canvas.Left="178" Canvas.Top="81"
+                   FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=label_load}"
+                   FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=label_load}"
+                   Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=label_load_font_color}"
+                   Text="{Binding LoadStatus}" />
+
+        <!-- label_playercount @356,91 -->
+        <TextBlock Canvas.Left="356" Canvas.Top="91" Width="180" Height="27"
+                   FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=label_playercount}"
+                   FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=label_playercount}"
+                   Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=label_playercount_font_color}"
+                   Text="{Binding PlayerCount}" />
+
+        <!-- image_btn_refresh, image_btn_favorite, image_button_www @86, 40x40 each -->
+        <Button Canvas.Left="86" Canvas.Top="99" Width="40" Height="40"
+                MinWidth="0" MinHeight="0" Padding="0" BorderThickness="0" Background="Transparent"
+                ToolTip.Tip="Refresh" Command="{Binding RefreshCommand}">
+            <Image Width="40" Height="40" Source="{Binding Theme, Converter={StaticResource ThemeImage}, ConverterParameter=buttons/refresh.png}" />
+        </Button>
+        <Button Canvas.Left="86" Canvas.Top="145" Width="40" Height="40"
+                MinWidth="0" MinHeight="0" Padding="0" BorderThickness="0" Background="Transparent"
+                ToolTip.Tip="Add to favorites" Command="{Binding AddFavoriteCommand}">
+            <Image Width="40" Height="40" Source="{Binding Theme, Converter={StaticResource ThemeImage}, ConverterParameter=buttons/favorite.png}" />
+        </Button>
+        <Button Canvas.Left="86" Canvas.Top="191" Width="40" Height="40"
+                MinWidth="0" MinHeight="0" Padding="0" BorderThickness="0" Background="Transparent"
+                ToolTip.Tip="Website">
+            <Image Width="40" Height="40" Source="{Binding Theme, Converter={StaticResource ThemeImage}, ConverterParameter=buttons/www.png}" />
+        </Button>
+
+        <!-- clickme @86,237, the invisible credits easter egg over the skin -->
+        <Button Canvas.Left="86" Canvas.Top="237" Width="40" Height="40"
+                MinWidth="0" MinHeight="0" Padding="0" BorderThickness="0" Background="Transparent"
+                Command="{Binding ShowCreditsCommand}" />
+
+        <!-- Image_servicon1..13 @314,102, per server on or off status icons -->
+        <ItemsControl Canvas.Left="314" Canvas.Top="102" ItemsSource="{Binding SlotIcons}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Spacing="1" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Image Width="15" Height="15" Stretch="Fill" Source="{Binding}" />
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- listbox_servers, listbox_fav, and listbox_pub overlaid @133,100 175x223,
+             the active tab decides which one is visible -->
+        <ListBox Canvas.Left="133" Canvas.Top="100" Width="175" Height="223"
+                 IsVisible="{Binding IsServersTab}"
+                 BorderThickness="0" CornerRadius="0" Padding="0"
+                 FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=listbox_servers}"
+                 FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=listbox_servers}"
+                 Background="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=listbox_servers}"
+                 Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=listbox_servers_font_color}"
+                 ItemsSource="{Binding Servers}" SelectedItem="{Binding SelectedServer}">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:ServerEntryViewModel">
+                    <TextBlock Text="{Binding Name}" />
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <ListBox Canvas.Left="133" Canvas.Top="100" Width="175" Height="223"
+                 IsVisible="{Binding IsFavoritesTab}"
+                 BorderThickness="0" CornerRadius="0" Padding="0"
+                 FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=listbox_servers}"
+                 FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=listbox_servers}"
+                 Background="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=listbox_servers}"
+                 Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=listbox_servers_font_color}"
+                 ItemsSource="{Binding Favorites}" SelectedItem="{Binding SelectedServer}">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:ServerEntryViewModel">
+                    <TextBlock Text="{Binding Name}" />
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <ListBox Canvas.Left="133" Canvas.Top="100" Width="175" Height="223"
+                 IsVisible="{Binding IsCommunityTab}"
+                 BorderThickness="0" CornerRadius="0" Padding="0"
+                 FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=listbox_servers}"
+                 FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=listbox_servers}"
+                 Background="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=listbox_servers}"
+                 Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=listbox_servers_font_color}"
+                 ItemsSource="{Binding Community}" SelectedItem="{Binding SelectedServer}">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:ServerEntryViewModel">
+                    <TextBlock Text="{Binding Name}" />
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <!-- memo_serverdesc @340,124 183x199 -->
+        <TextBox Canvas.Left="340" Canvas.Top="124" Width="183" Height="199"
+                 MinWidth="0" MinHeight="0"
+                 BorderThickness="0" CornerRadius="0" Padding="2"
+                 FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=memo_serverdesc}"
+                 FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=memo_serverdesc}"
+                 Background="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=memo_serverdesc}"
+                 Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=memo_serverdesc_font_color}"
+                 IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+                 Text="{Binding Description}" />
+
+        <!-- panel_btn_connect "Connect" @221,331 175x39 -->
+        <Button Canvas.Left="221" Canvas.Top="331" Width="175" Height="39"
+                MinWidth="0" MinHeight="0" Padding="0" BorderThickness="0" CornerRadius="0"
+                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=panel_btn_connect}"
+                FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=panel_btn_connect}"
+                Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=panel_btn_connect_font_color}"
+                Background="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=panel_btn_connect}"
+                Content="Connect" Command="{Binding ConnectCommand}" />
+    </Canvas>
+</UserControl>

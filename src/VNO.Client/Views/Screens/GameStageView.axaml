@@ -1,0 +1,378 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:VNO.Client.ViewModels"
+             xmlns:models="using:VNO.Core.Models"
+             xmlns:services="using:VNO.Client.Services"
+             xmlns:conv="using:VNO.Client.Converters"
+             x:Class="VNO.Client.Views.GameStageView"
+             x:DataType="vm:GameStageViewModel">
+
+    <UserControl.Resources>
+        <conv:ThemeImageConverter x:Key="ThemeImage" />
+        <conv:ThemeBrushConverter x:Key="ThemeBrush" />
+        <conv:ThemeFontConverter x:Key="ThemeFont" />
+        <conv:ThemeFontSizeConverter x:Key="ThemeFontSize" />
+        <conv:ThemeActivePanelConverter x:Key="ThemeActivePanel" />
+        <conv:ThemeItemAvailabilityConverter x:Key="ThemeItemAvailability" />
+    </UserControl.Resources>
+
+    <UserControl.Styles>
+        <!-- the legacy TPanel, TEdit, and TMemo controls had no hover, focus, or
+             state styling, keep the themed colors static across interaction states -->
+        <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{Binding $parent[TextBox].Background}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{Binding $parent[TextBox].Background}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
+            <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
+        </Style>
+        <Style Selector="Button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
+            <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
+        </Style>
+        <Style Selector="Button:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
+        </Style>
+    </UserControl.Styles>
+
+    <!-- Ports the playable part of Form15. Coordinates match the original controls.
+         image_bg_main covers the 777x681 left area, the rest of the 1279x796 window
+         holds the area list and helper controls. Colors come from the theme design.ini -->
+    <Canvas Width="1279" Height="796" Background="White">
+
+        <!-- image_bg_main @-1,0 777x681 -->
+        <Image Canvas.Left="-1" Canvas.Top="0" Width="777" Height="681"
+               Stretch="Fill" Source="{Binding Theme, Converter={StaticResource ThemeImage}, ConverterParameter=main.png}" />
+
+        <!-- image_background scene viewport @8,9 480x280: the scene background with
+             the character sprite drawn over it, falling back to the theme backdrop -->
+        <Image Canvas.Left="8" Canvas.Top="9" Width="480" Height="280"
+               Stretch="Fill" Source="{Binding Theme, Converter={StaticResource ThemeImage}, ConverterParameter=backdrop.png}" />
+        <Image Canvas.Left="8" Canvas.Top="9" Width="480" Height="280"
+               Stretch="Fill" Source="{Binding SceneBackground}" />
+        <Image Canvas.Left="8" Canvas.Top="9" Width="480" Height="280"
+               Stretch="Uniform" Source="{Binding CharacterSprite}" />
+        <!-- staff broadcast image overlays the scene, clears on click -->
+        <Image Canvas.Left="8" Canvas.Top="9" Width="480" Height="280"
+               Stretch="Uniform" Source="{Binding BroadcastImage}"
+               IsVisible="{Binding BroadcastImage, Converter={x:Static ObjectConverters.IsNotNull}}"
+               PointerPressed="OnBroadcastImagePressed" />
+
+        <!-- image_textbox chat graphic @8,176 480x113 -->
+        <Image Canvas.Left="8" Canvas.Top="176" Width="480" Height="113"
+               Stretch="Fill" Source="{Binding Theme, Converter={StaticResource ThemeImage}, ConverterParameter=chat.png}" />
+
+        <!-- Gauge_left HP @37,17 194x6, design hp_left keys -->
+        <ProgressBar Canvas.Left="37" Canvas.Top="17" Width="194" Height="6"
+                     MinWidth="0" MinHeight="0"
+                     Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=hp_left}"
+                     Background="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=hp_left_back}"
+                     Minimum="0" Maximum="{Binding Stats.MaxHealth}" Value="{Binding Stats.Health}" />
+        <!-- Gauge_right HP @276,17 194x6, design hp_right keys -->
+        <ProgressBar Canvas.Left="276" Canvas.Top="17" Width="194" Height="6"
+                     MinWidth="0" MinHeight="0"
+                     Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=hp_right}"
+                     Background="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=hp_right_back}"
+                     Minimum="0" Maximum="{Binding Stats.MaxHealth}" Value="{Binding Stats.Health}" />
+        <!-- label_hp_left @36,30, label_hp_right @440,30 -->
+        <TextBlock Canvas.Left="36" Canvas.Top="30" FontFamily="Tahoma" FontWeight="Bold"
+                   Foreground="#FFFFFF" Text="{Binding Stats.Health}" />
+        <TextBlock Canvas.Left="440" Canvas.Top="30" FontFamily="Tahoma" FontWeight="Bold"
+                   Foreground="#FFFFFF" Text="{Binding Stats.Health}" />
+
+        <!-- edit_name char nameplate @56,187 over the textbox, design edit_name font -->
+        <TextBlock Canvas.Left="56" Canvas.Top="187" Width="193" Foreground="#FFFFFF"
+                   FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=edit_name}"
+                   FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=edit_name}"
+                   Text="{Binding CharacterName}" />
+        <!-- memo_textbox in character text @27,214 461x74, design memo_textbox font -->
+        <TextBlock Canvas.Left="27" Canvas.Top="214" Width="461" Height="74"
+                   Foreground="#FFFFFF" TextWrapping="Wrap"
+                   FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=memo_textbox}"
+                   FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=memo_textbox}"
+                   Text="{Binding InCharacterText}" />
+
+        <!-- img_arrow @462,265 15x15, the continue arrow shown once the line is
+             fully typed out, drawn from the theme Arrow.gif -->
+        <Image Canvas.Left="462" Canvas.Top="265" Width="15" Height="15"
+               Stretch="Fill" IsVisible="{Binding IsChatComplete}"
+               Source="{Binding Theme, Converter={StaticResource ThemeImage}, ConverterParameter=Arrow.gif}" />
+
+        <!-- DBText1 scene log @500,9 196x280, transparent over the skin, design dbtext1 -->
+        <TextBlock Canvas.Left="500" Canvas.Top="9" Width="196" Height="280" TextWrapping="Wrap"
+                   FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=dbtext1}"
+                   FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=dbtext1}"
+                   Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=dbtext1_font_color}"
+                   Text="{Binding InCharacterText}" />
+
+        <!-- edit_chat IC input line @8,298 260x17, design edit_chat bg and font -->
+        <TextBox Canvas.Left="8" Canvas.Top="296" Width="260" Height="22"
+                 Padding="2,0" VerticalContentAlignment="Center"
+                 BorderThickness="0" CornerRadius="0"
+                 FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=edit_chat}"
+                 FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=edit_chat}"
+                 Background="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=edit_chat}"
+                 Foreground="#FFFFFF" CaretBrush="#FFFFFF"
+                 PlaceholderText="Speak in character" Text="{Binding MessageInput}">
+            <TextBox.KeyBindings>
+                <KeyBinding Gesture="Enter" Command="{Binding SendInCharacterCommand}" />
+            </TextBox.KeyBindings>
+        </TextBox>
+
+        <!-- TrackBar_Color text color @8,415 114 -->
+        <Slider Canvas.Left="8" Canvas.Top="415" Width="114" Minimum="0" Maximum="6"
+                Value="{Binding TextColor}" />
+        <!-- image_btn_sfx @201,415 67x20 -->
+        <Button Canvas.Left="201" Canvas.Top="415" Width="67" Height="20" Padding="0"
+                BorderThickness="0" Background="Transparent" ToolTip.Tip="Toggle SFX">
+            <Image Width="67" Height="20" Stretch="Fill"
+                   Source="{Binding Theme, Converter={StaticResource ThemeImage}, ConverterParameter=buttons/sfx_on.png}" />
+        </Button>
+        <!-- ComboBox1 emotes @14,441 169: a horizontal strip of emote thumbnails,
+             clicking one swaps the standing pose -->
+        <ScrollViewer Canvas.Left="14" Canvas.Top="441" Width="169" Height="21"
+                      HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding Emotes}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="1" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="services:CharacterEmote">
+                        <Button Width="20" Height="20" Padding="0" MinWidth="0" MinHeight="0"
+                                BorderThickness="0" Background="Transparent"
+                                ToolTip.Tip="{Binding Name}"
+                                Command="{Binding $parent[ItemsControl].((vm:GameStageViewModel)DataContext).SelectEmoteCommand}"
+                                CommandParameter="{Binding}">
+                            <Image Width="18" Height="18" Stretch="Uniform" Source="{Binding Thumbnail}" />
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+        <!-- Image2 / Image3 sfx prev next @189,441 / @232,441 37x20 -->
+        <Button Canvas.Left="189" Canvas.Top="441" Width="37" Height="20" Padding="0" Content="&lt;" />
+        <Button Canvas.Left="232" Canvas.Top="441" Width="37" Height="20" Padding="0" Content="&gt;" />
+        <!-- edit_dice @15,468 45, rolls the NdM expression on Enter -->
+        <TextBox Canvas.Left="15" Canvas.Top="466" Width="45" Height="22"
+                 MinWidth="0" MinHeight="0"
+                 Padding="2,0" BorderThickness="0" FontFamily="Tahoma" FontSize="11"
+                 FontWeight="Bold" Foreground="#FF0000"
+                 Text="{Binding Dice, Mode=TwoWay}" ToolTip.Tip="Enter a dice roll like 2d6 and press Enter">
+            <TextBox.KeyBindings>
+                <KeyBinding Gesture="Enter" Command="{Binding RollDiceCommand}" />
+            </TextBox.KeyBindings>
+        </TextBox>
+        <!-- Roll button next to the dice box -->
+        <Button Canvas.Left="66" Canvas.Top="466" Width="60" Height="22"
+                MinWidth="0" MinHeight="0" Padding="0"
+                BorderThickness="0" CornerRadius="0"
+                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                FontFamily="Tahoma" FontSize="10"
+                Background="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=panel_random}"
+                Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=panel_random_font_color}"
+                Content="Roll" Command="{Binding RollDiceCommand}" />
+
+        <!-- Label2 clock/countdown @199,467, replaced with the timer when running -->
+        <TextBlock Canvas.Left="199" Canvas.Top="467" MinWidth="40"
+                   FontFamily="Tahoma" FontSize="11" FontWeight="Bold"
+                   Foreground="#FFFFFF" Text="{Binding ClockText}" />
+
+        <!-- The three text feeds overlaid @274,298 214x235 -->
+        <!-- memo_fi events feed -->
+        <ListBox Canvas.Left="274" Canvas.Top="298" Width="214" Height="235"
+                 IsVisible="{Binding IsEventsFeed}" BorderThickness="0" Padding="0"
+                 FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=memo_fi}"
+                 FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=memo_fi}"
+                 Background="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=memo_fi}"
+                 Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=memo_fi_font_color}"
+                 ItemsSource="{Binding Events}" />
+        <!-- memo_ooc feed -->
+        <ListBox Canvas.Left="274" Canvas.Top="298" Width="214" Height="235"
+                 IsVisible="{Binding IsOocFeed}" BorderThickness="0" Padding="0"
+                 FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=memo_ooc}"
+                 FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=memo_ooc}"
+                 Background="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=memo_ooc}"
+                 Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=memo_ooc_font_color}"
+                 ItemsSource="{Binding Ooc}" />
+        <!-- memo_debug errors feed -->
+        <ListBox Canvas.Left="274" Canvas.Top="298" Width="214" Height="235"
+                 IsVisible="{Binding IsErrorsFeed}" BorderThickness="0" Padding="0"
+                 FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=memo_debug}"
+                 FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=memo_debug}"
+                 Background="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=memo_debug}"
+                 Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=memo_debug_font_color}"
+                 ItemsSource="{Binding Errors}" />
+
+        <!-- edit_fi and edit_ooc input @274,533 214x21, toggled by feed -->
+        <TextBox Canvas.Left="274" Canvas.Top="533" Width="214" Height="21"
+                 MinWidth="0" MinHeight="0"
+                 Padding="2,0" VerticalContentAlignment="Center" BorderThickness="0"
+                 FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=edit_fi}"
+                 FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=edit_fi}"
+                 Background="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=edit_fi}"
+                 Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=edit_fi_font_color}"
+                 IsVisible="{Binding !IsOocFeed}" PlaceholderText="Message"
+                 Text="{Binding MessageInput}">
+            <TextBox.KeyBindings>
+                <KeyBinding Gesture="Enter" Command="{Binding SendInCharacterCommand}" />
+            </TextBox.KeyBindings>
+        </TextBox>
+        <TextBox Canvas.Left="274" Canvas.Top="533" Width="214" Height="21"
+                 MinWidth="0" MinHeight="0"
+                 Padding="2,0" VerticalContentAlignment="Center" BorderThickness="0"
+                 FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=edit_ooc}"
+                 FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=edit_ooc}"
+                 Background="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=edit_ooc}"
+                 Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=edit_ooc_font_color}"
+                 IsVisible="{Binding IsOocFeed}" PlaceholderText="Out of character"
+                 Text="{Binding OocInput}">
+            <TextBox.KeyBindings>
+                <KeyBinding Gesture="Enter" Command="{Binding SendOutOfCharacterCommand}" />
+            </TextBox.KeyBindings>
+        </TextBox>
+
+        <!-- panel_btn_OOC @274,555 60x20, panel_btn_event @333,555 96x20, panel_btn_debug @429,555 59x20 -->
+        <Button Canvas.Left="274" Canvas.Top="555" Width="60" Height="20"
+                MinWidth="0" MinHeight="0" Padding="0"
+                BorderThickness="0" CornerRadius="0"
+                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=panel_btn_ooc}"
+                FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=panel_btn_ooc}"
+                Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=panel_btn_ooc_font_color}"
+                Content="OOC" Command="{Binding ShowOocCommand}">
+            <Button.Background>
+                <MultiBinding Converter="{StaticResource ThemeActivePanel}" ConverterParameter="panel_btn_ooc">
+                    <Binding Path="Theme" />
+                    <Binding Path="IsOocFeed" />
+                </MultiBinding>
+            </Button.Background>
+        </Button>
+        <Button Canvas.Left="333" Canvas.Top="555" Width="96" Height="20"
+                MinWidth="0" MinHeight="0" Padding="0"
+                BorderThickness="0" CornerRadius="0"
+                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=panel_btn_event}"
+                FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=panel_btn_event}"
+                Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=panel_btn_event_font_color}"
+                Content="EVENTS" Command="{Binding ShowEventsCommand}">
+            <Button.Background>
+                <MultiBinding Converter="{StaticResource ThemeActivePanel}" ConverterParameter="panel_btn_event">
+                    <Binding Path="Theme" />
+                    <Binding Path="IsEventsFeed" />
+                </MultiBinding>
+            </Button.Background>
+        </Button>
+        <Button Canvas.Left="429" Canvas.Top="555" Width="59" Height="20"
+                MinWidth="0" MinHeight="0" Padding="0"
+                BorderThickness="0" CornerRadius="0"
+                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=panel_btn_debug}"
+                FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=panel_btn_debug}"
+                Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=panel_btn_debug_font_color}"
+                Content="ERRORS" Command="{Binding ShowErrorsCommand}">
+            <Button.Background>
+                <MultiBinding Converter="{StaticResource ThemeActivePanel}" ConverterParameter="panel_btn_debug">
+                    <Binding Path="Theme" />
+                    <Binding Path="IsErrorsFeed" />
+                </MultiBinding>
+            </Button.Background>
+        </Button>
+
+        <!-- image_btn_change @274,581 111x29, image_btn_save @394,581 29x29 -->
+        <Button Canvas.Left="274" Canvas.Top="581" Width="111" Height="29" Padding="0"
+                BorderThickness="0" Background="Transparent" ToolTip.Tip="Change character">
+            <Image Width="111" Height="29" Stretch="Fill"
+                   Source="{Binding Theme, Converter={StaticResource ThemeImage}, ConverterParameter=buttons/change.png}" />
+        </Button>
+        <Button Canvas.Left="394" Canvas.Top="581" Width="29" Height="29" Padding="0"
+                BorderThickness="0" Background="Transparent" ToolTip.Tip="Save replay"
+                Command="{Binding SaveReplayCommand}">
+            <Image Width="29" Height="29" Stretch="Fill"
+                   Source="{Binding Theme, Converter={StaticResource ThemeImage}, ConverterParameter=buttons/SaveReplay.png}" />
+        </Button>
+
+        <!-- image_btn_mute @505,295 54x29, image_btn_stop @629,295 54x29 -->
+        <Button Canvas.Left="505" Canvas.Top="295" Width="54" Height="29" Padding="0"
+                BorderThickness="0" Background="Transparent" ToolTip.Tip="Mute music">
+            <Image Width="54" Height="29" Stretch="Fill"
+                   Source="{Binding Theme, Converter={StaticResource ThemeImage}, ConverterParameter=buttons/Mute.png}" />
+        </Button>
+        <Button Canvas.Left="629" Canvas.Top="295" Width="54" Height="29" Padding="0"
+                BorderThickness="0" Background="Transparent" ToolTip.Tip="Stop music">
+            <Image Width="54" Height="29" Stretch="Fill"
+                   Source="{Binding Theme, Converter={StaticResource ThemeImage}, ConverterParameter=buttons/Stop.png}" />
+        </Button>
+
+        <!-- listbox_music @494,329 219x182, design listbox_music key. Double
+             tapping a track plays it, the legacy music change -->
+        <ListBox Canvas.Left="494" Canvas.Top="329" Width="219" Height="182"
+                 BorderThickness="0" Padding="0"
+                 FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=listbox_music}"
+                 FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=listbox_music}"
+                 Background="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=listbox_music}"
+                 ItemsSource="{Binding Music}"
+                 DoubleTapped="OnMusicDoubleTapped">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="models:MusicTrack">
+                    <!-- entries you have the file for use listbox_item, missing ones listbox_item_missing -->
+                    <TextBlock Text="{Binding Name}">
+                        <TextBlock.Foreground>
+                            <MultiBinding Converter="{StaticResource ThemeItemAvailability}">
+                                <Binding Path="$parent[ListBox].((vm:GameStageViewModel)DataContext).Theme" />
+                                <Binding Path="HasFile" />
+                            </MultiBinding>
+                        </TextBlock.Foreground>
+                    </TextBlock>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <!-- listbox_area_old @767,560 219x147, design listbox_area key. Double
+             tapping an area moves the player there -->
+        <ListBox x:Name="AreaList" Canvas.Left="767" Canvas.Top="560" Width="219" Height="147"
+                 BorderThickness="0" Padding="0"
+                 FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=listbox_area}"
+                 FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=listbox_area}"
+                 Background="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=listbox_area}"
+                 Foreground="#FFFFFF" ItemsSource="{Binding Areas}"
+                 DoubleTapped="OnAreaDoubleTapped">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="models:Area">
+                    <TextBlock Text="{Binding Name}" />
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <!-- listbox_users @767,405 219x150, players in the current area -->
+        <ListBox Canvas.Left="767" Canvas.Top="405" Width="219" Height="150"
+                 BorderThickness="0" Padding="0"
+                 FontFamily="{Binding Theme, Converter={StaticResource ThemeFont}, ConverterParameter=listbox_area}"
+                 FontSize="{Binding Theme, Converter={StaticResource ThemeFontSize}, ConverterParameter=listbox_area}"
+                 Background="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=listbox_area}"
+                 Foreground="#FFFFFF" ItemsSource="{Binding Users}" />
+
+        <!-- Bottom button row, original 40x40 image buttons -->
+        <!-- image_mod @264,624 -->
+        <Button Canvas.Left="264" Canvas.Top="624" Width="40" Height="40" Padding="0"
+                FontFamily="Tahoma" FontSize="10" Background="#3E3E3E" Foreground="#FFFFFF"
+                BorderThickness="0" Content="MOD" ToolTip.Tip="Moderator"
+                Command="{Binding OpenModeratorCommand}" />
+        <!-- Image5 @310,624, animator -->
+        <Button Canvas.Left="310" Canvas.Top="624" Width="40" Height="40" Padding="0"
+                FontFamily="Tahoma" FontSize="10" Background="#3E3E3E" Foreground="#FFFFFF"
+                BorderThickness="0" Content="ANIM" ToolTip.Tip="Animator"
+                Command="{Binding OpenAnimatorCommand}" />
+
+        <!-- Memo_replay @3,695 777x92 -->
+        <ListBox Canvas.Left="3" Canvas.Top="695" Width="777" Height="92"
+                 BorderThickness="0" Padding="0" FontFamily="Tahoma" FontSize="10"
+                 Background="#101018" Foreground="#FFFFFF" ItemsSource="{Binding Replay}" />
+    </Canvas>
+</UserControl>

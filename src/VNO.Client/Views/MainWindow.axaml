@@ -1,0 +1,16 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:VNO.Client.ViewModels"
+        x:Class="VNO.Client.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="VNO Remix Beta: 3rd Strike"
+        SizeToContent="WidthAndHeight"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen"
+        Background="White">
+
+    <!-- The shell hosts whichever screen the navigator has made current.
+         The original Form15 resized itself per screen, so the window sizes to the
+         active screen view. The view locator turns the screen view model into its view -->
+    <ContentControl Content="{Binding Navigator.CurrentScreen}" />
+</Window>

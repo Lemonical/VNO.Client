@@ -1,0 +1,34 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:VNO.Client.ViewModels"
+        x:Class="VNO.Client.Views.LoginDialog"
+        x:DataType="vm:LoginDialogViewModel"
+        Width="283" Height="147"
+        WindowStartupLocation="CenterScreen"
+        CanResize="False"
+        Title="Database Login">
+
+    <!-- Ports LoginDialog.dfm, the database style credential prompt -->
+    <Canvas Width="283" Height="147">
+        <Border Canvas.Left="8" Canvas.Top="7" Width="267" Height="98"
+                BorderBrush="#888" BorderThickness="1">
+            <Canvas>
+                <TextBlock Canvas.Left="10" Canvas.Top="6" Text="Database:" />
+                <TextBlock Canvas.Left="106" Canvas.Top="6" Text="VNO" />
+
+                <TextBlock Canvas.Left="8" Canvas.Top="39" Text="User Name:" />
+                <TextBox Canvas.Left="101" Canvas.Top="36" Width="153" Height="22"
+                         MaxLength="31" Text="{Binding UserName}" />
+
+                <TextBlock Canvas.Left="8" Canvas.Top="67" Text="Password:" />
+                <TextBox Canvas.Left="101" Canvas.Top="64" Width="153" Height="22"
+                         MaxLength="31" PasswordChar="*" Text="{Binding Password}" />
+            </Canvas>
+        </Border>
+
+        <Button Canvas.Left="119" Canvas.Top="114" Width="75" Height="25" Content="OK"
+                IsDefault="True" IsEnabled="{Binding CanSubmit}" Click="OnAccept" />
+        <Button Canvas.Left="200" Canvas.Top="114" Width="75" Height="25" Content="Cancel"
+                IsCancel="True" Click="OnCancel" />
+    </Canvas>
+</Window>
