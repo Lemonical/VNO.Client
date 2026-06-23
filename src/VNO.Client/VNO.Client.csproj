@@ -17,9 +17,6 @@
     <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="ManagedBass" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" />
     <PackageReference Include="Microsoft.Extensions.Options" />
@@ -32,8 +29,13 @@
     <ProjectReference Include="..\..\external\VNO.Core\src\VNO.Core\VNO.Core.csproj" />
   </ItemGroup>
 
+  <!-- default player config, read from the external data folder at runtime the way
+       the legacy client read data\settings.ini and data\AS.ini -->
   <ItemGroup>
-    <None Update="appsettings.json">
+    <None Update="data\settings.ini">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="data\AS.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

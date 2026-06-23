@@ -69,9 +69,9 @@ git submodule update --init --recursive
 
 ## Preparing Content
 
-By default, the client reads `Client:DataDirectory` from [`src/VNO.Client/appsettings.json`](src/VNO.Client/appsettings.json). The default value is `data`.
-
-That path is resolved relative to the built executable, so a default `dotnet run` expects runtime content under:
+Like the legacy client, all runtime content and configuration live in a `data`
+folder next to the built executable, so a default `dotnet run` expects runtime
+content under:
 
 ```text id="s0ezs7"
 src/VNO.Client/bin/Debug/net10.0/data/
@@ -82,6 +82,7 @@ The runtime content tree is expected to look like this:
 ```text id="57jkpm"
 data/
   settings.ini
+  AS.ini
   UI/<design>/design.ini
   characters/<character>/
   background/
@@ -90,7 +91,9 @@ data/
   sounds/
 ```
 
-If you want to keep assets somewhere else, update `Client:DataDirectory` in `src/VNO.Client/appsettings.json` before launching the app.
+`settings.ini` and `AS.ini` ship with the app and are copied next to the
+executable on build. Edit those copies (or the ones in your own `data` folder) to
+point the client at a different game or auth server.
 
 ## Running
 
@@ -110,17 +113,23 @@ One important detail: the client currently defaults to `GameServerPort = 16789`,
 
 ## Configuration
 
-The active defaults live in [`src/VNO.Client/appsettings.json`](src/VNO.Client/appsettings.json) under the `Client` section.
+Following the legacy client, settings are read from external ini files in the
+`data` folder by [`ClientSettingsLoader`](src/VNO.Client/Services/ClientSettingsLoader.cs),
+not from an `appsettings.json`. Any key that is missing falls back to a built in
+default, so a partial or absent file still starts the client.
 
-Key settings:
+`data/settings.ini`:
 
-- `Client:DisplayName`: default local display name
-- `Client:GameServerHost` / `Client:GameServerPort`: direct game server target
-- `Client:AuthServerHost` / `Client:AuthServerPort`: Master Server target
-- `Client:HeartbeatSeconds`: keepalive interval
-- `Client:DataDirectory`: runtime content root
+- `[User] user`: default local display name
+- `[Connection] server` / `[Connection] port`: direct game server target
+- `[Connection] heartbeat`: keepalive interval in seconds
 
-This app currently reads configuration from `appsettings.json` only. Environment-variable overrides are not wired up yet.
+`data/AS.ini`:
+
+- `[AS] 1`: primary Master Server, a bare host or `host:port` (port defaults to 6543)
+
+The data folder name is fixed at `data` next to the executable, matching the
+legacy layout. Environment-variable overrides are not wired up.
 
 ## Testing
 

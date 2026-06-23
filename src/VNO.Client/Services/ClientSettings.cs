@@ -4,8 +4,9 @@ namespace VNO.Client.Services;
 /// Settings that control how the client connects
 /// </summary>
 /// <remarks>
-/// Bound from the Client section of appsettings.json. These replace the hard
-/// coded addresses found in the legacy Form15
+/// Loaded from the legacy data folder ini files by <see cref="ClientSettingsLoader"/>,
+/// data\settings.ini for the saved identity and data\AS.ini for the auth server.
+/// These replace the hard coded addresses found in the legacy Form15
 /// </remarks>
 public sealed class ClientSettings
 {

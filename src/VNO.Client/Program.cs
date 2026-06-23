@@ -1,8 +1,8 @@
 using System;
 using Avalonia;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using VNO.Client.Services;
 using VNO.Client.ViewModels;
 using VNO.Core.Networking;
@@ -49,20 +49,17 @@ public static class Program
 
     private static IServiceProvider BuildServiceProvider()
     {
-        var configuration = new ConfigurationBuilder()
-            .SetBasePath(AppContext.BaseDirectory)
-            .AddJsonFile("appsettings.json", optional: true)
-            .Build();
-
         var services = new ServiceCollection();
 
         services.AddLogging(builder =>
         {
-            builder.AddConfiguration(configuration.GetSection("Logging"));
+            builder.SetMinimumLevel(LogLevel.Information);
             builder.AddConsole();
         });
 
-        services.Configure<ClientSettings>(configuration.GetSection("Client"));
+        // settings come from the legacy data folder ini files, not a json config,
+        // so the same external files the player edits drive the port
+        services.AddSingleton<IOptions<ClientSettings>>(Options.Create(ClientSettingsLoader.Load()));
 
         // networking, the client reaches the game server
         services.AddSingleton<IMessageClient, TcpMessageClient>();
