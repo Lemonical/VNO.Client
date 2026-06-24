@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="VNO.Client.Views.Dialogs.InputDialog"
+        Icon="/Assets/VNO_FINAL_1_0_Icon.ico"
         Title="VNO"
         SizeToContent="WidthAndHeight"
         CanResize="False"

@@ -7,6 +7,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <ApplicationIcon>Assets\VNO_FINAL_1_0_Icon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,7 +24,12 @@
   </ItemGroup>
 
   <!-- No AvaloniaResource skin assets. UI themes are player content loaded at
-       runtime from the external data/UI/<design> folder, never packaged -->
+       runtime from the external data/UI/<design> folder, never packaged.
+       The one exception is the app icon below, which is the program's own
+       identity (taskbar, title bar) and not player-swappable theme content -->
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\VNO_FINAL_1_0_Icon.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\external\VNO.Core\src\VNO.Core\VNO.Core.csproj" />
