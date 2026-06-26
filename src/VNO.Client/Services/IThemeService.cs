@@ -47,6 +47,12 @@ public interface IThemeService
     double GetFontSize(string key);
 
     /// <summary>
+    /// Reads a plain integer entry from the given design.ini section, used for the
+    /// Placement offsets like badge_leftdiv and badge_updiv, 0 when absent
+    /// </summary>
+    int GetDesignInteger(string section, string key, int fallback);
+
+    /// <summary>
     /// Reads a value from data\settings.ini, the legacy user settings file
     /// </summary>
     string ReadSetting(string section, string key, string fallback);

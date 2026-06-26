@@ -11,6 +11,7 @@ public sealed class ClientSession : IClientSession
     private string? _selectedCharacter;
     private IReadOnlyList<string> _serverRoster = Array.Empty<string>();
     private IReadOnlyCollection<string> _takenCharacters = Array.Empty<string>();
+    private readonly Dictionary<string, string> _badges = new(StringComparer.OrdinalIgnoreCase);
 
     /// <inheritdoc />
     public string? SelectedCharacter
@@ -47,6 +48,19 @@ public sealed class ClientSession : IClientSession
             _takenCharacters = value ?? Array.Empty<string>();
             TakenCharactersChanged?.Invoke(this, EventArgs.Empty);
         }
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyDictionary<string, string> Badges => _badges;
+
+    /// <inheritdoc />
+    public void SetBadge(string name, string badge)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return;
+        }
+        _badges[name] = badge;
     }
 
     /// <inheritdoc />

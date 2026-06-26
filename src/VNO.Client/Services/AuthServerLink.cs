@@ -26,6 +26,7 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
 
     private readonly IMessageClient _client;
     private readonly ClientSettings _settings;
+    private readonly IClientSession _session;
     private readonly ILogger<AuthServerLink> _logger;
 
     private Timer? _heartbeatTimer;
@@ -42,10 +43,12 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
     public AuthServerLink(
         ILoggerFactory loggerFactory,
         IOptions<ClientSettings> settings,
+        IClientSession session,
         ILogger<AuthServerLink> logger)
     {
         _client = new TcpMessageClient(loggerFactory.CreateLogger<TcpMessageClient>());
         _settings = settings.Value;
+        _session = session;
         _logger = logger;
         _client.StateChanged += (_, e) => StateChanged?.Invoke(this, e.State);
         _client.MessageReceived += (_, e) => HandleMessage(e.Message);
@@ -171,6 +174,12 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
                 {
                     ServerDiscovered?.Invoke(this, listing);
                 }
+                break;
+
+            case MessageType.BadgeGrant:
+                // the master pushes one of these per badge holder right after login, the
+                // stage later draws the badge next to anyone speaking under the name
+                _session.SetBadge(message.GetArgument(0), message.GetArgument(1));
                 break;
 
             case MessageType.LoginGranted:

@@ -95,6 +95,10 @@ public sealed partial class GameStageViewModel : ViewModelBase
     [ObservableProperty]
     private Bitmap? _characterSprite;
 
+    // the scene badge shown for the speaking character, null hides the layer
+    [ObservableProperty]
+    private Bitmap? _badgeImage;
+
     /// <summary>
     /// Creates the game stage over its services
     /// </summary>
@@ -114,6 +118,10 @@ public sealed partial class GameStageViewModel : ViewModelBase
         _images = images;
         _audio = audio;
         Theme = theme;
+
+        // the badge layer sits at the legacy coordinates shifted by the theme offsets
+        BadgeLeft = 35 + theme.GetDesignInteger("Placement", "badge_leftdiv", 0);
+        BadgeTop = 187 + theme.GetDesignInteger("Placement", "badge_updiv", 0);
 
         _server.MessageReceived += OnMessageReceived;
         _server.StateChanged += OnStateChanged;
@@ -155,6 +163,16 @@ public sealed partial class GameStageViewModel : ViewModelBase
     /// The player theme, views resolve their skin images through it
     /// </summary>
     public IThemeService Theme { get; }
+
+    /// <summary>
+    /// Stage badge layer X, the legacy badge @35 plus the theme badge_leftdiv offset
+    /// </summary>
+    public double BadgeLeft { get; }
+
+    /// <summary>
+    /// Stage badge layer Y, the legacy badge @187 plus the theme badge_updiv offset
+    /// </summary>
+    public double BadgeTop { get; }
 
     /// <summary>True when the events feed is shown</summary>
     public bool IsEventsFeed => ActiveFeed == ChatFeed.Events;
@@ -349,6 +367,11 @@ public sealed partial class GameStageViewModel : ViewModelBase
             case MessageType.InCharacter:
                 CharacterName = message.GetArgument(0);
                 BeginTypewriter(message.GetArgument(1));
+                // badges are owned by the master and delivered to us at login, look the
+                // speaker's shown name up in that roster, an unknown name clears the layer
+                BadgeImage = _session.Badges.TryGetValue(message.GetArgument(0), out var badgeId)
+                    ? BadgeCatalog.Load(badgeId)
+                    : null;
                 Add(Events, $"{message.GetArgument(0)}: {message.GetArgument(1)}");
                 RecordReplay($"IC|{message.GetArgument(0)}|{message.GetArgument(1)}");
                 break;

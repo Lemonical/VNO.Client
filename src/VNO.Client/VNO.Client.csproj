@@ -29,6 +29,9 @@
        identity (taskbar, title bar) and not player-swappable theme content -->
   <ItemGroup>
     <AvaloniaResource Include="Assets\VNO_FINAL_1_0_Icon.ico" />
+    <!-- Badge icons are app content (staff/vip/special markers), not player theme
+         content, so they ship embedded and render on the stage badge layer -->
+    <AvaloniaResource Include="Assets\images\badges\**\*.png" />
   </ItemGroup>
 
   <ItemGroup>

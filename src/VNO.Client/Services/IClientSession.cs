@@ -44,4 +44,16 @@ public interface IClientSession
     /// Raised when the taken character set changes
     /// </summary>
     event EventHandler? TakenCharactersChanged;
+
+    /// <summary>
+    /// Badge roster the auth server pushed at login, a shown name maps to a badge id.
+    /// The stage draws that badge next to anyone speaking under the name, lookups are
+    /// case insensitive
+    /// </summary>
+    IReadOnlyDictionary<string, string> Badges { get; }
+
+    /// <summary>
+    /// Records a badge grant received from the auth server
+    /// </summary>
+    void SetBadge(string name, string badge);
 }

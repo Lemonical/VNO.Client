@@ -64,6 +64,7 @@ public sealed class CharacterSelectRosterTests
         public Avalonia.Media.IBrush GetBrush(string key) => new Avalonia.Media.SolidColorBrush(Avalonia.Media.Colors.White);
         public Avalonia.Media.FontFamily GetFontFamily(string key) => Avalonia.Media.FontFamily.Default;
         public double GetFontSize(string key) => 12;
+        public int GetDesignInteger(string section, string key, int fallback) => fallback;
         public string ReadSetting(string section, string key, string fallback) => fallback;
         public int ReadSettingInteger(string section, string key, int fallback) => fallback;
         public void WriteSetting(string section, string key, string value) { }

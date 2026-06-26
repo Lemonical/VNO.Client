@@ -117,6 +117,10 @@ public sealed class ThemeService : IThemeService
     }
 
     /// <inheritdoc />
+    public int GetDesignInteger(string section, string key, int fallback) =>
+        _design.ReadInteger(section, key, fallback);
+
+    /// <inheritdoc />
     public string ReadSetting(string section, string key, string fallback) =>
         _settings.ReadString(section, key, fallback);
 

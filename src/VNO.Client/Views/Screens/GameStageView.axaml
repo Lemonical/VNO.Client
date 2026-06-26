@@ -67,6 +67,12 @@
         <Image Canvas.Left="8" Canvas.Top="176" Width="480" Height="113"
                Stretch="Fill" Source="{Binding Theme, Converter={StaticResource ThemeImage}, ConverterParameter=chat.png}" />
 
+        <!-- badge @35,187 15x15, shifted by the theme Placement badge_leftdiv/updiv.
+             Shows the speaking character's staff/vip/special badge, hidden when none -->
+        <Image Canvas.Left="{Binding BadgeLeft}" Canvas.Top="{Binding BadgeTop}" Width="15" Height="15"
+               Stretch="Fill" Source="{Binding BadgeImage}"
+               IsVisible="{Binding BadgeImage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
         <!-- Gauge_left HP @37,17 194x6, design hp_left keys -->
         <ProgressBar Canvas.Left="37" Canvas.Top="17" Width="194" Height="6"
                      MinWidth="0" MinHeight="0"

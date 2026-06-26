@@ -25,6 +25,7 @@ Current features include:
 - Direct game server connection support
 - Legacy-style theme loading from `data/UI/<design>/design.ini`
 - Character roster, emote, background and big-art loading from the legacy asset tree
+- Master-owned badges drawn beside speakers, delivered to the client at login
 - INI-driven settings and theme helpers
 - BASS-backed audio with graceful fallback when the native BASS library is missing (this will change soon)
 - Replay behaviour support
