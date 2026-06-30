@@ -14,6 +14,7 @@
         <conv:ThemeFontSizeConverter x:Key="ThemeFontSize" />
         <conv:ThemeActivePanelConverter x:Key="ThemeActivePanel" />
         <conv:ThemeItemAvailabilityConverter x:Key="ThemeItemAvailability" />
+        <conv:HexBrushConverter x:Key="HexBrush" />
     </UserControl.Resources>
 
     <UserControl.Styles>
@@ -57,6 +58,11 @@
                Stretch="Fill" Source="{Binding SceneBackground}" />
         <Image Canvas.Left="8" Canvas.Top="9" Width="480" Height="280"
                Stretch="Uniform" Source="{Binding CharacterSprite}" />
+        <!-- image_effect @8,9 480x280, a transparent staff triggered effect overlay.
+             not hit testable so it never blocks scene or broadcast image clicks -->
+        <Image Canvas.Left="8" Canvas.Top="9" Width="480" Height="280"
+               Stretch="Fill" IsHitTestVisible="False" Source="{Binding EffectImage}"
+               IsVisible="{Binding EffectImage, Converter={x:Static ObjectConverters.IsNotNull}}" />
         <!-- staff broadcast image overlays the scene, clears on click -->
         <Image Canvas.Left="8" Canvas.Top="9" Width="480" Height="280"
                Stretch="Uniform" Source="{Binding BroadcastImage}"
@@ -73,23 +79,44 @@
                Stretch="Fill" Source="{Binding BadgeImage}"
                IsVisible="{Binding BadgeImage, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
-        <!-- Gauge_left HP @37,17 194x6, design hp_left keys -->
+        <!-- Gauge_left HP @37,17 194x6, design hp_left keys, the left courtroom side -->
         <ProgressBar Canvas.Left="37" Canvas.Top="17" Width="194" Height="6"
                      MinWidth="0" MinHeight="0"
                      Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=hp_left}"
                      Background="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=hp_left_back}"
                      Minimum="0" Maximum="{Binding Stats.MaxHealth}" Value="{Binding Stats.Health}" />
-        <!-- Gauge_right HP @276,17 194x6, design hp_right keys -->
+        <!-- Gauge_right HP @276,17 194x6, design hp_right keys, the right courtroom side -->
         <ProgressBar Canvas.Left="276" Canvas.Top="17" Width="194" Height="6"
                      MinWidth="0" MinHeight="0"
                      Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=hp_right}"
                      Background="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=hp_right_back}"
-                     Minimum="0" Maximum="{Binding Stats.MaxHealth}" Value="{Binding Stats.Health}" />
-        <!-- label_hp_left @36,30, label_hp_right @440,30 -->
+                     Minimum="0" Maximum="{Binding Stats.MaxHealthRight}" Value="{Binding Stats.HealthRight}" />
+        <!-- Gauge_m_left MP @37,22 144x6, drawn under the HP bar, the left side mana -->
+        <ProgressBar Canvas.Left="37" Canvas.Top="22" Width="144" Height="6"
+                     MinWidth="0" MinHeight="0"
+                     Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=mp_left}"
+                     Background="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=mp_left_back}"
+                     Minimum="0" Maximum="{Binding Stats.MaxMana}" Value="{Binding Stats.Mana}" />
+        <!-- Gauge_m_right MP @326,22 144x6, the right side mana -->
+        <ProgressBar Canvas.Left="326" Canvas.Top="22" Width="144" Height="6"
+                     MinWidth="0" MinHeight="0"
+                     Foreground="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=mp_right}"
+                     Background="{Binding Theme, Converter={StaticResource ThemeBrush}, ConverterParameter=mp_right_back}"
+                     Minimum="0" Maximum="{Binding Stats.MaxManaRight}" Value="{Binding Stats.ManaRight}" />
+        <!-- label_hp_left @36,30, label_hp_right @440,30, colored by the animator hp color -->
         <TextBlock Canvas.Left="36" Canvas.Top="30" FontFamily="Tahoma" FontWeight="Bold"
-                   Foreground="#FFFFFF" Text="{Binding Stats.Health}" />
+                   Foreground="{Binding Stats.HealthColor, Converter={StaticResource HexBrush}}"
+                   Text="{Binding Stats.Health}" />
         <TextBlock Canvas.Left="440" Canvas.Top="30" FontFamily="Tahoma" FontWeight="Bold"
-                   Foreground="#FFFFFF" Text="{Binding Stats.Health}" />
+                   Foreground="{Binding Stats.HealthColor, Converter={StaticResource HexBrush}}"
+                   Text="{Binding Stats.HealthRight}" />
+        <!-- Label_mana_left @36,40, Label_mana_right @440,40, colored by the mp color -->
+        <TextBlock Canvas.Left="36" Canvas.Top="40" FontFamily="Tahoma" FontWeight="Bold"
+                   Foreground="{Binding Stats.ManaColor, Converter={StaticResource HexBrush}}"
+                   Text="{Binding Stats.Mana}" />
+        <TextBlock Canvas.Left="440" Canvas.Top="40" FontFamily="Tahoma" FontWeight="Bold"
+                   Foreground="{Binding Stats.ManaColor, Converter={StaticResource HexBrush}}"
+                   Text="{Binding Stats.ManaRight}" />
 
         <!-- edit_name char nameplate @56,187 over the textbox, design edit_name font -->
         <TextBlock Canvas.Left="56" Canvas.Top="187" Width="193" Foreground="#FFFFFF"
@@ -375,6 +402,11 @@
                 FontFamily="Tahoma" FontSize="10" Background="#3E3E3E" Foreground="#FFFFFF"
                 BorderThickness="0" Content="ANIM" ToolTip.Tip="Animator"
                 Command="{Binding OpenAnimatorCommand}" />
+        <!-- self hide toggle, only honored when staff allow hiding -->
+        <ToggleButton Canvas.Left="356" Canvas.Top="624" Width="40" Height="40" Padding="0"
+                      FontFamily="Tahoma" FontSize="10" Background="#3E3E3E" Foreground="#FFFFFF"
+                      BorderThickness="0" Content="HIDE" ToolTip.Tip="Hide yourself from the roster"
+                      IsChecked="{Binding IsSelfHidden}" Command="{Binding ToggleHideCommand}" />
 
         <!-- Memo_replay @3,695 777x92 -->
         <ListBox Canvas.Left="3" Canvas.Top="695" Width="777" Height="92"

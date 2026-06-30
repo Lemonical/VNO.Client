@@ -37,6 +37,8 @@ public sealed partial class GameStageViewModel : ViewModelBase
     private DispatcherTimer? _countdownTimer;
     private int _countdownRemaining;
 
+    private DispatcherTimer? _effectTimer;
+
     [ObservableProperty]
     private string _characterName = string.Empty;
 
@@ -98,6 +100,10 @@ public sealed partial class GameStageViewModel : ViewModelBase
     // the scene badge shown for the speaking character, null hides the layer
     [ObservableProperty]
     private Bitmap? _badgeImage;
+
+    // the image_effect overlay, a staff triggered scene effect, null hides the layer
+    [ObservableProperty]
+    private Bitmap? _effectImage;
 
     /// <summary>
     /// Creates the game stage over its services
@@ -357,6 +363,21 @@ public sealed partial class GameStageViewModel : ViewModelBase
     [RelayCommand]
     private void OpenAnimator() => _windows.ShowAnimator();
 
+    /// <summary>
+    /// True when the player hid themselves from the area roster
+    /// </summary>
+    [ObservableProperty]
+    private bool _isSelfHidden;
+
+    [RelayCommand]
+    private async Task ToggleHideAsync()
+    {
+        // the server only honors this when staff enabled hiding, it enforces the policy
+        IsSelfHidden = !IsSelfHidden;
+        await _server.SendAsync(new NetworkMessage(MessageType.HideSelf, IsSelfHidden ? "on" : "off"))
+            .ConfigureAwait(false);
+    }
+
     private void OnMessageReceived(object? sender, NetworkMessage message) =>
         Dispatcher.UIThread.Post(() => HandleMessage(message));
 
@@ -404,6 +425,9 @@ public sealed partial class GameStageViewModel : ViewModelBase
                 // a staff forced music stream, announce it and play it
                 Add(Events, $"♪ Streaming: {message.GetArgument(0)}");
                 _audio.PlayMusic(message.GetArgument(0));
+                break;
+            case MessageType.SceneEffect:
+                ShowSceneEffect(message.GetArgument(0));
                 break;
             case MessageType.GiveItem:
                 ReceiveItem(message);
@@ -502,6 +526,34 @@ public sealed partial class GameStageViewModel : ViewModelBase
     [RelayCommand]
     private void ClearBroadcastImage() => BroadcastImage = null;
 
+    private void ShowSceneEffect(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            EffectImage = null;
+            return;
+        }
+
+        // effects are data\background\effect_<name>.png, the legacy image_effect layer.
+        // a missing file just means nothing plays
+        Add(Events, $"* Effect: {name}");
+        EffectImage = _assets.LoadBackground("effect_" + name);
+        if (EffectImage is null)
+        {
+            return;
+        }
+
+        // the overlay is transient, clear it after a short beat like the original
+        _effectTimer?.Stop();
+        _effectTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2.5) };
+        _effectTimer.Tick += (_, _) =>
+        {
+            _effectTimer?.Stop();
+            EffectImage = null;
+        };
+        _effectTimer.Start();
+    }
+
     private void StartCountdown(NetworkMessage message)
     {
         // a staff started countdown replaces the clock with a ticking timer
@@ -577,6 +629,17 @@ public sealed partial class GameStageViewModel : ViewModelBase
             return;
         }
 
+        // font colors carry a hex string, not a number, so handle them before parsing
+        switch (stat)
+        {
+            case "HPCOLOR":
+                Stats.HealthColor = raw;
+                return;
+            case "MPCOLOR":
+                Stats.ManaColor = raw;
+                return;
+        }
+
         var isDelta = raw[0] is '+' or '-';
         if (!int.TryParse(raw, System.Globalization.NumberStyles.Integer,
                 System.Globalization.CultureInfo.InvariantCulture, out var value))
@@ -593,12 +656,26 @@ public sealed partial class GameStageViewModel : ViewModelBase
                 Stats.MaxHealth = Math.Max(0, value);
                 Stats.Health = Clamp(Stats.Health, Stats.MaxHealth);
                 break;
+            case "HPRIGHT":
+                Stats.HealthRight = Clamp(isDelta ? Stats.HealthRight + value : value, Stats.MaxHealthRight);
+                break;
+            case "MAXHPRIGHT":
+                Stats.MaxHealthRight = Math.Max(0, value);
+                Stats.HealthRight = Clamp(Stats.HealthRight, Stats.MaxHealthRight);
+                break;
             case "MP":
                 Stats.Mana = Clamp(isDelta ? Stats.Mana + value : value, Stats.MaxMana);
                 break;
             case "MAXMP":
                 Stats.MaxMana = Math.Max(0, value);
                 Stats.Mana = Clamp(Stats.Mana, Stats.MaxMana);
+                break;
+            case "MPRIGHT":
+                Stats.ManaRight = Clamp(isDelta ? Stats.ManaRight + value : value, Stats.MaxManaRight);
+                break;
+            case "MAXMPRIGHT":
+                Stats.MaxManaRight = Math.Max(0, value);
+                Stats.ManaRight = Clamp(Stats.ManaRight, Stats.MaxManaRight);
                 break;
         }
     }

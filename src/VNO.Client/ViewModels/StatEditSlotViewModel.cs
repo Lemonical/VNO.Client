@@ -21,6 +21,10 @@ public sealed partial class StatEditSlotViewModel : ObservableObject
     private const string ManaStat = "MP";
     private const string MaxHealthStat = "MAXHP";
     private const string MaxManaStat = "MAXMP";
+    private const string HealthRightStat = "HPRIGHT";
+    private const string ManaRightStat = "MPRIGHT";
+    private const string MaxHealthRightStat = "MAXHPRIGHT";
+    private const string MaxManaRightStat = "MAXMPRIGHT";
 
     private readonly IServerConnection _server;
 
@@ -32,6 +36,10 @@ public sealed partial class StatEditSlotViewModel : ObservableObject
 
     [ObservableProperty]
     private string _mana = "MP";
+
+    // when set, this slot edits the right courtroom side bars instead of the left
+    [ObservableProperty]
+    private bool _targetRight;
 
     /// <summary>
     /// Creates a slot over the server link
@@ -46,8 +54,10 @@ public sealed partial class StatEditSlotViewModel : ObservableObject
             return;
         }
 
-        await _server.SendAsync(new NetworkMessage(MessageType.StatChange, CharId, HealthStat, Health)).ConfigureAwait(false);
-        await _server.SendAsync(new NetworkMessage(MessageType.StatChange, CharId, ManaStat, Mana)).ConfigureAwait(false);
+        await _server.SendAsync(new NetworkMessage(
+            MessageType.StatChange, CharId, TargetRight ? HealthRightStat : HealthStat, Health)).ConfigureAwait(false);
+        await _server.SendAsync(new NetworkMessage(
+            MessageType.StatChange, CharId, TargetRight ? ManaRightStat : ManaStat, Mana)).ConfigureAwait(false);
     }
 
     [RelayCommand]
@@ -58,8 +68,10 @@ public sealed partial class StatEditSlotViewModel : ObservableObject
             return;
         }
 
-        await _server.SendAsync(new NetworkMessage(MessageType.StatChange, CharId, MaxHealthStat, Health)).ConfigureAwait(false);
-        await _server.SendAsync(new NetworkMessage(MessageType.StatChange, CharId, MaxManaStat, Mana)).ConfigureAwait(false);
+        await _server.SendAsync(new NetworkMessage(
+            MessageType.StatChange, CharId, TargetRight ? MaxHealthRightStat : MaxHealthStat, Health)).ConfigureAwait(false);
+        await _server.SendAsync(new NetworkMessage(
+            MessageType.StatChange, CharId, TargetRight ? MaxManaRightStat : MaxManaStat, Mana)).ConfigureAwait(false);
     }
 
     /// <summary>

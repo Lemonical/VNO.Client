@@ -17,10 +17,12 @@
             <!-- TabSheet1 Self-HP/MP edit -->
             <TabItem Header="Self-HP/MP edit">
                 <Canvas>
-                    <ComboBox Canvas.Left="16" Canvas.Top="12" Width="121" />
+                    <ComboBox Canvas.Left="16" Canvas.Top="12" Width="121"
+                              ItemsSource="{Binding ColorChoices}" SelectedItem="{Binding HealthColorValue}" />
                     <Button Canvas.Left="16" Canvas.Top="40" Width="121" Height="25"
                             Content="Set HP Font Color" Command="{Binding SetHealthColorCommand}" />
-                    <ComboBox Canvas.Left="154" Canvas.Top="12" Width="121" />
+                    <ComboBox Canvas.Left="154" Canvas.Top="12" Width="121"
+                              ItemsSource="{Binding ColorChoices}" SelectedItem="{Binding ManaColorValue}" />
                     <Button Canvas.Left="154" Canvas.Top="40" Width="121" Height="25"
                             Content="Set MP Font Color" Command="{Binding SetManaColorCommand}" />
 
@@ -106,6 +108,14 @@
                             Command="{Binding GiveCreditsCommand}" />
                     <Button Canvas.Left="154" Canvas.Top="341" Width="63" Height="25" Content="Check"
                             Command="{Binding CheckCreditsCommand}" />
+                    <!-- Badges are owned by the master now and pushed to clients at login,
+                         they are managed from the master console, not from here -->
+                    <!-- Scene effect, overlays data\background\effect_<name> on everyone's stage -->
+                    <TextBlock Canvas.Left="3" Canvas.Top="448" Text="Scene Effect" />
+                    <TextBox Canvas.Left="3" Canvas.Top="467" Width="169" Height="22"
+                             Text="{Binding EffectName}" />
+                    <Button Canvas.Left="178" Canvas.Top="467" Width="63" Height="25" Content="Play"
+                            Command="{Binding PlayEffectCommand}" />
                 </Canvas>
             </TabItem>
 
@@ -176,6 +186,8 @@
                                         <Button Content="Edit" Command="{Binding EditValueCommand}" />
                                         <Button Content="Max" Command="{Binding SetMaxCommand}" />
                                     </StackPanel>
+                                    <!-- edit the right courtroom side bars instead of the left -->
+                                    <CheckBox Content="Right side" IsChecked="{Binding TargetRight}" />
                                 </StackPanel>
                             </Border>
                         </DataTemplate>

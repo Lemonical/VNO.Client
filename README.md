@@ -26,6 +26,9 @@ Current features include:
 - Legacy-style theme loading from `data/UI/<design>/design.ini`
 - Character roster, emote, background and big-art loading from the legacy asset tree
 - Master-owned badges drawn beside speakers, delivered to the client at login
+- Staff-triggered scene effect overlays
+- Self hide and show
+- HP and MP bars
 - INI-driven settings and theme helpers
 - BASS-backed audio with graceful fallback when the native BASS library is missing (this will change soon)
 - Replay behaviour support

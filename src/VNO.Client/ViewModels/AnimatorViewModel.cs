@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Threading;
@@ -25,6 +26,8 @@ public sealed partial class AnimatorViewModel : ViewModelBase
     private const string ManaStat = "MP";
     private const string MaxHealthStat = "MAXHP";
     private const string MaxManaStat = "MAXMP";
+    private const string HealthColorStat = "HPCOLOR";
+    private const string ManaColorStat = "MPCOLOR";
     private const string SelfTarget = "0";
     private const int EditSlotCount = 8;
 
@@ -55,6 +58,15 @@ public sealed partial class AnimatorViewModel : ViewModelBase
 
     [ObservableProperty]
     private string _creditAmount = "Amount";
+
+    [ObservableProperty]
+    private string _effectName = "Effect name";
+
+    [ObservableProperty]
+    private string _healthColorValue = "#FFFFFFFF";
+
+    [ObservableProperty]
+    private string _manaColorValue = "#FFFFFFFF";
 
     [ObservableProperty]
     private string _timerSeconds = "Amount of Seconds";
@@ -90,6 +102,17 @@ public sealed partial class AnimatorViewModel : ViewModelBase
         for (var i = 0; i < EditSlotCount; i++)
         {
             EditSlots.Add(new StatEditSlotViewModel(server));
+        }
+
+        // the server answers an item or credit check with a lookup result line
+        _server.MessageReceived += OnServerMessage;
+    }
+
+    private void OnServerMessage(object? sender, NetworkMessage message)
+    {
+        if (message.Type == MessageType.StaffLookupResult)
+        {
+            Status = message.GetArgument(0);
         }
     }
 
@@ -132,10 +155,24 @@ public sealed partial class AnimatorViewModel : ViewModelBase
     private Task AdjustManaAsync(string delta) => SendStat(SelfTarget, ManaStat, delta);
 
     [RelayCommand]
-    private void SetHealthColor() => Status = "HP font color set";
+    private async Task SetHealthColorAsync()
+    {
+        await SendStat(SelfTarget, HealthColorStat, HealthColorValue).ConfigureAwait(false);
+        Status = $"HP font color set to {HealthColorValue}";
+    }
 
     [RelayCommand]
-    private void SetManaColor() => Status = "MP font color set";
+    private async Task SetManaColorAsync()
+    {
+        await SendStat(SelfTarget, ManaColorStat, ManaColorValue).ConfigureAwait(false);
+        Status = $"MP font color set to {ManaColorValue}";
+    }
+
+    /// <summary>
+    /// Argb hex colors a staff member can pick for the HP and MP readouts
+    /// </summary>
+    public IReadOnlyList<string> ColorChoices { get; } =
+        ["#FFFFFFFF", "#FFFF0000", "#FF00FF00", "#FF00A2FF", "#FFFFFF00", "#FFFF8000", "#FF000000"];
 
     [RelayCommand]
     private async Task GiveItemAsync()
@@ -151,7 +188,11 @@ public sealed partial class AnimatorViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void CheckItem() => Status = $"Checking items for {ItemUser}";
+    private async Task CheckItemAsync()
+    {
+        await _server.SendAsync(new NetworkMessage(MessageType.CheckInventory, ItemUser, "items")).ConfigureAwait(false);
+        Status = $"Checking items for {ItemUser}";
+    }
 
     [RelayCommand]
     private async Task GiveCreditsAsync()
@@ -167,7 +208,25 @@ public sealed partial class AnimatorViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void CheckCredits() => Status = $"Checking credits for {CreditUser}";
+    private async Task CheckCreditsAsync()
+    {
+        await _server.SendAsync(new NetworkMessage(MessageType.CheckInventory, CreditUser, "credits")).ConfigureAwait(false);
+        Status = $"Checking credits for {CreditUser}";
+    }
+
+    [RelayCommand]
+    private async Task PlayEffectAsync()
+    {
+        if (string.IsNullOrWhiteSpace(EffectName))
+        {
+            Status = "Enter an effect name first";
+            return;
+        }
+
+        // clients load data\background\effect_<name> and overlay it on the scene
+        await _server.SendAsync(new NetworkMessage(MessageType.SceneEffect, EffectName)).ConfigureAwait(false);
+        Status = $"Played effect '{EffectName}'";
+    }
 
     [RelayCommand]
     private async Task StartTimerAsync()
@@ -264,19 +323,42 @@ public sealed partial class AnimatorViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void AllowHide() => Status = "Players may hide";
+    private async Task AllowHideAsync()
+    {
+        await SendPolicy("allowhide", true).ConfigureAwait(false);
+        Status = "Players may hide";
+    }
 
     [RelayCommand]
-    private void DisallowHide() => Status = "Players may not hide";
+    private async Task DisallowHideAsync()
+    {
+        await SendPolicy("allowhide", false).ConfigureAwait(false);
+        Status = "Players may not hide";
+    }
 
     [RelayCommand]
-    private void HideRoomCount() => Status = "Room count hidden";
+    private async Task HideRoomCountAsync()
+    {
+        await SendPolicy("hideroomcount", true).ConfigureAwait(false);
+        Status = "Room count hidden";
+    }
 
     [RelayCommand]
-    private void SelfHpEditOn() => Status = "Self HP edit enabled";
+    private async Task SelfHpEditOnAsync()
+    {
+        await SendPolicy("selfhpedit", true).ConfigureAwait(false);
+        Status = "Self HP edit enabled";
+    }
 
     [RelayCommand]
-    private void SelfHpEditOff() => Status = "Self HP edit disabled";
+    private async Task SelfHpEditOffAsync()
+    {
+        await SendPolicy("selfhpedit", false).ConfigureAwait(false);
+        Status = "Self HP edit disabled";
+    }
+
+    private Task SendPolicy(string key, bool on) =>
+        _server.SendAsync(new NetworkMessage(MessageType.RoomPolicy, key, on ? "on" : "off"));
 
     private async Task SendStat(string target, string stat, string value)
     {
