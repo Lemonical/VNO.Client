@@ -5,11 +5,12 @@
         Icon="/Assets/VNO_FINAL_1_0_Icon.ico"
         x:DataType="vm:ModeratorViewModel"
         Title="Visual Novel Online Moderator Interface."
-        Width="746" Height="379"
+        Width="1006" Height="379"
         CanResize="False">
 
-    <!-- Ports Form1. Coordinates match the original buttons and lists one to one -->
-    <Canvas Width="746" Height="379">
+    <!-- Ports Form1. Coordinates match the original buttons and lists one to one, the
+         chat feed column at x=754 is a port addition so ID Ignore has a feed to hide from -->
+    <Canvas Width="1006" Height="379">
 
         <!-- Left action column @8 -->
         <Button Canvas.Left="8" Canvas.Top="8" Width="75" Height="25" Content="Char Lookup"
@@ -91,5 +92,13 @@
                  IsReadOnly="True" Text="{Binding Status}" />
         <TextBox Canvas.Left="321" Canvas.Top="349" Width="415" Height="22"
                  PlaceholderText="Reason" Text="{Binding Reason}" />
+
+        <!-- Chat feed column @754, a port addition. Shows live IC and OOC for the area so
+             a moderator can watch chat and use ID Ignore to hide the selected player -->
+        <TextBlock Canvas.Left="754" Canvas.Top="12" Width="244" Height="16"
+                   FontWeight="Bold" Text="Area chat (ID Ignore hides selected player)"
+                   TextWrapping="NoWrap" />
+        <ListBox Canvas.Left="754" Canvas.Top="30" Width="244" Height="313"
+                 ItemsSource="{Binding ChatFeed}" />
     </Canvas>
 </Window>

@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Threading.Tasks;
@@ -20,6 +22,10 @@ namespace VNO.Client.ViewModels;
 public sealed partial class ModeratorViewModel : ViewModelBase
 {
     private readonly IServerConnection _server;
+
+    // shown names whose chat the moderator has chosen to hide, client side only, keyed
+    // by shown name because that is all an IC line carries to a receiver
+    private readonly HashSet<string> _ignored = new(StringComparer.OrdinalIgnoreCase);
 
     [ObservableProperty]
     private string _targetUserId = string.Empty;
@@ -109,6 +115,23 @@ public sealed partial class ModeratorViewModel : ViewModelBase
                     LogHistory(text);
                 });
                 break;
+            case MessageType.InCharacter:
+                // an IC line carries the shown name then the text, hide it when the
+                // moderator has ignored that name
+                Dispatcher.UIThread.Post(() =>
+                {
+                    var name = message.GetArgument(0);
+                    if (_ignored.Contains(name))
+                    {
+                        return;
+                    }
+                    AppendChat($"{name}: {message.GetArgument(1)}");
+                });
+                break;
+            case MessageType.OutOfCharacter:
+                // OOC is relayed without an author, so it cannot be name filtered, show it
+                Dispatcher.UIThread.Post(() => AppendChat($"(OOC) {message.GetArgument(0)}"));
+                break;
         }
     }
 
@@ -143,6 +166,16 @@ public sealed partial class ModeratorViewModel : ViewModelBase
     /// The history list shown bottom left, ListBox3
     /// </summary>
     public ObservableCollection<string> History { get; } = new();
+
+    /// <summary>
+    /// Live IC and OOC chat for the moderator's area, the feed that ID Ignore hides from
+    /// </summary>
+    public ObservableCollection<string> ChatFeed { get; } = new();
+
+    /// <summary>
+    /// Whether the moderator is currently hiding chat from the given shown name
+    /// </summary>
+    public bool IsIgnoring(string name) => _ignored.Contains(name);
 
     [RelayCommand]
     private async Task CharLookupAsync()
@@ -217,7 +250,35 @@ public sealed partial class ModeratorViewModel : ViewModelBase
     private Task IdMuteAsync() => SendForUser(MessageType.Mute, "ID mute");
 
     [RelayCommand]
-    private void IdIgnore() => Status = "ID ignore toggled";
+    private void IdIgnore()
+    {
+        // client side per moderator ignore, toggles hiding the selected name's IC chat
+        // from the feed, keyed by shown name since that is what a received IC line carries
+        if (string.IsNullOrWhiteSpace(TargetUserId))
+        {
+            Status = "Select a player first";
+            return;
+        }
+
+        if (_ignored.Add(TargetUserId))
+        {
+            // drop any lines already shown from this name so the toggle takes effect at once
+            var prefix = $"{TargetUserId}: ";
+            for (var i = ChatFeed.Count - 1; i >= 0; i--)
+            {
+                if (ChatFeed[i].StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    ChatFeed.RemoveAt(i);
+                }
+            }
+            Status = $"Ignoring {TargetUserId}, their chat is hidden";
+        }
+        else
+        {
+            _ignored.Remove(TargetUserId);
+            Status = $"No longer ignoring {TargetUserId}";
+        }
+    }
 
     [RelayCommand]
     private Task IdIsolateAsync() => SendForUser(MessageType.Isolate, "ID isolate");
@@ -265,11 +326,22 @@ public sealed partial class ModeratorViewModel : ViewModelBase
     private void LogHistory(string action)
     {
         // the ListBox3 bans and unbans log, newest first, capped so it never grows
-        var stamp = System.DateTime.Now.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
+        var stamp = DateTime.Now.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
         History.Insert(0, $"[{stamp}] {action}");
         while (History.Count > 200)
         {
             History.RemoveAt(History.Count - 1);
+        }
+    }
+
+    private void AppendChat(string line)
+    {
+        // newest last so the feed reads top to bottom like the game window, capped so it
+        // never grows without bound during a long moderation session
+        ChatFeed.Add(line);
+        while (ChatFeed.Count > 500)
+        {
+            ChatFeed.RemoveAt(0);
         }
     }
 }
