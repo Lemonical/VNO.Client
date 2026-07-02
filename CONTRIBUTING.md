@@ -4,10 +4,10 @@
 
 ## Prerequisites
 
-* .NET 10 SDK
-* Git with submodule support
-* Legacy runtime content, if you need to exercise asset-driven UI behaviour locally
-* Optional: native BASS runtime, if you need to test music or sound playback
+- .NET 10 SDK
+- Git with submodule support
+- Legacy runtime content, if you need to exercise asset-driven UI behaviour locally
+- Optional: native BASS runtime, if you need to test music or sound playback
 
 ## Setup
 
@@ -29,13 +29,13 @@ git submodule update --init --recursive
 
 When making changes, please keep the following in mind:
 
-* Keep protocol-facing behaviour aligned with `external/VNO.Core`.
-* Preserve the split between views, view models and services.
-* Keep asset loading tolerant of partial or missing legacy content unless the change intentionally tightens that contract.
-* Keep runtime content loaded from the `data/` folder rather than embedding legacy assets into the assembly.
-* Avoid mixing unrelated refactors with user-visible or protocol-visible behaviour changes.
-* Prefer small, focused changes that are easier to review.
-* Add comments for non-obvious logic, especially around protocol handling, asset discovery, theme loading, replay behaviour and moderation flows.
+- Keep protocol-facing behaviour aligned with `external/VNO.Core`.
+- Preserve the split between views, view models and services.
+- Keep asset loading tolerant of partial or missing legacy content unless the change intentionally tightens that contract.
+- Keep runtime content loaded from the `data/` folder rather than embedding legacy assets into the assembly.
+- Avoid mixing unrelated refactors with user-visible or protocol-visible behaviour changes.
+- Prefer small, focused changes that are easier to review.
+- Add comments for non-obvious logic, especially around protocol handling, asset discovery, theme loading, replay behaviour and moderation flows.
 
 ## Testing
 
@@ -47,27 +47,27 @@ dotnet test VNO.Client.slnx
 
 Add or update tests when changing:
 
-* Asset loading
-* INI parsing
-* Theme and colour helpers
-* Character roster loading
-* Background, big-art or sound lookup
-* Replay behaviour
-* Moderator flows
-* Client-to-server message handling
-* Master Server login or server-list behaviour
-* Configuration loading
+- Asset loading
+- INI parsing
+- Theme and colour helpers
+- Character roster loading
+- Background, big-art or sound lookup
+- Replay behaviour
+- Moderator flows
+- Client-to-server message handling
+- Master Server login or server-list behaviour
+- Configuration loading
 
 ## Pull Requests
 
 Before opening a pull request, make sure that:
 
-* Submodules are initialised and up to date.
-* The project builds successfully.
-* The test suite passes.
-* Asset-loading or protocol changes are covered by matching tests.
-* Any configuration changes are documented.
-* The pull request explains the user-visible or protocol-visible impact clearly.
+- Submodules are initialised and up to date.
+- The project builds successfully.
+- The test suite passes.
+- Asset-loading or protocol changes are covered by matching tests.
+- Any configuration changes are documented.
+- The pull request explains the user-visible or protocol-visible impact clearly.
 
 Please include setup notes if the change depends on local runtime content, BASS, a local `VNO.Master` instance or a local `VNO.Server` instance.
 
@@ -79,14 +79,14 @@ Use GitHub issues to report bugs, regressions, asset-loading problems, client wo
 
 When reporting a bug, please include:
 
-* What you expected to happen
-* What actually happened
-* Steps to reproduce the issue
-* Relevant logs or screenshots, if available
-* Your operating system
-* Your .NET SDK version
-* Whether legacy runtime content is present
-* Whether the issue involves `VNO.Master`, `VNO.Server` or local direct connection settings
+- What you expected to happen
+- What actually happened
+- Steps to reproduce the issue
+- Relevant logs or screenshots, if available
+- Your operating system
+- Your .NET SDK version
+- Whether legacy runtime content is present
+- Whether the issue involves `VNO.Master`, `VNO.Server` or local direct connection settings
 
 ## License
 

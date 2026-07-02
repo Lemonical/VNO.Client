@@ -1,4 +1,4 @@
-# VNO.Client
+# Visual Novel Online Client
 
 Desktop player client for Visual Novel Online, built with .NET 10 and Avalonia 12.
 
@@ -23,7 +23,7 @@ Current features include:
 - Shared protocol layer through the `external/VNO.Core` submodule
 - Master Server login, version-check and server-list integration
 - Direct game server connection support
-- Legacy-style theme loading from `data/UI/<design>/design.ini`
+- Legacy theme loading from `data/UI/<design>/design.ini`
 - Character roster, emote, background and big-art loading from the legacy asset tree
 - Master-owned badges drawn beside speakers, delivered to the client at login
 - Staff-triggered scene effect overlays
