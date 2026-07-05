@@ -46,8 +46,16 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
         IClientSession session,
         ILogger<AuthServerLink> logger)
     {
-        _client = new TcpMessageClient(loggerFactory.CreateLogger<TcpMessageClient>());
         _settings = settings.Value;
+
+        // the AS link picks its transport from settings, wss to the App Platform hosted AS or
+        // TCP to a legacy one. Small frames, so the tight auth inbound cap applies
+        var transportOptions = new WebSocketTransportOptions
+        {
+            UseTls = _settings.AuthUseTls,
+            MaxInboundBytes = ProtocolConstants.MaxAuthMessageBytes,
+        };
+        _client = MessageTransportFactory.CreateClient(_settings.AuthTransport, loggerFactory, transportOptions);
         _session = session;
         _logger = logger;
         _client.StateChanged += (_, e) => StateChanged?.Invoke(this, e.State);

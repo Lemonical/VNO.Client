@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using VNO.Core.Networking;
 
 namespace VNO.Client.Services;
 
@@ -32,22 +33,63 @@ public static class ClientSettingsLoader
         var settings = new ClientSettings { DataDirectory = DataDirectoryName };
         var dataDirectory = Path.Combine(baseDirectory, DataDirectoryName);
 
-        // settings.ini carries the saved player identity
+        // settings.ini carries the saved player identity and the game server transport
         var settingsIni = DelphiIniFile.Load(Path.Combine(dataDirectory, "settings.ini"));
         settings.DisplayName = settingsIni.ReadString("User", "user", settings.DisplayName);
+        settings.GameServerTransport = ReadTransport(
+            settingsIni.ReadString("Network", "transport", string.Empty), settings.GameServerTransport);
+        settings.GameServerUseTls = ReadBool(
+            settingsIni.ReadString("Network", "tls", string.Empty), settings.GameServerUseTls);
 
-        // AS.ini is the auth server directory, the first numbered entry is primary
+        // AS.ini is the auth server directory, the first numbered entry is primary. A bare
+        // address stays TCP, a ws or wss URL selects WebSocket and TLS
         var authIni = DelphiIniFile.Load(Path.Combine(dataDirectory, "AS.ini"));
         var primary = authIni.ReadString("AS", "1", string.Empty);
         if (primary.Length > 0)
         {
-            var (host, port) = SplitHostPort(primary, settings.AuthServerPort);
-            settings.AuthServerHost = host;
-            settings.AuthServerPort = port;
+            ApplyAuthEndpoint(settings, primary);
         }
 
         return settings;
     }
+
+    // parse the primary auth entry, either a legacy host[:port] or a ws/wss URL
+    private static void ApplyAuthEndpoint(ClientSettings settings, string primary)
+    {
+        if (primary.StartsWith("ws://", StringComparison.OrdinalIgnoreCase) ||
+            primary.StartsWith("wss://", StringComparison.OrdinalIgnoreCase))
+        {
+            var uri = new Uri(primary);
+            settings.AuthTransport = Transport.WebSocket;
+            settings.AuthUseTls = string.Equals(uri.Scheme, "wss", StringComparison.OrdinalIgnoreCase);
+            settings.AuthServerHost = uri.Host;
+            settings.AuthServerPort = uri.IsDefaultPort
+                ? (settings.AuthUseTls ? 443 : 80)
+                : uri.Port;
+            return;
+        }
+
+        var (host, port) = SplitHostPort(primary, settings.AuthServerPort);
+        settings.AuthServerHost = host;
+        settings.AuthServerPort = port;
+    }
+
+    private static Transport ReadTransport(string value, Transport fallback) =>
+        value.Trim().ToLowerInvariant() switch
+        {
+            "websocket" or "ws" or "wss" => Transport.WebSocket,
+            "tcp" => Transport.Tcp,
+            _ => fallback,
+        };
+
+    // the legacy ini stored booleans as 1/0, true/false, or yes/no
+    private static bool ReadBool(string value, bool fallback) =>
+        value.Trim().ToLowerInvariant() switch
+        {
+            "1" or "true" or "yes" or "on" => true,
+            "0" or "false" or "no" or "off" => false,
+            _ => fallback,
+        };
 
     // legacy AS.ini stored bare addresses, allow an optional :port suffix so a
     // non default auth port can be set without a second key

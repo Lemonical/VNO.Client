@@ -1,3 +1,5 @@
+using VNO.Core.Networking;
+
 namespace VNO.Client.Services;
 
 /// <summary>
@@ -21,9 +23,19 @@ public sealed class ClientSettings
     public string GameServerHost { get; set; } = "127.0.0.1";
 
     /// <summary>
-    /// TCP port of the game server
+    /// TCP port of the game server, also the HTTP/WebSocket port
     /// </summary>
     public int GameServerPort { get; set; } = 16789;
+
+    /// <summary>
+    /// Which transport the client reaches a game server over
+    /// </summary>
+    public Transport GameServerTransport { get; set; } = Transport.Tcp;
+
+    /// <summary>
+    /// Dial game servers over TLS, wss instead of ws
+    /// </summary>
+    public bool GameServerUseTls { get; set; }
 
     /// <summary>
     /// Host name or address of the auth server
@@ -34,6 +46,20 @@ public sealed class ClientSettings
     /// TCP port of the auth server
     /// </summary>
     public int AuthServerPort { get; set; } = 6543;
+
+    /// <summary>
+    /// Which transport the client reaches the auth server over
+    /// </summary>
+    /// <remarks>
+    /// The auth server list entry may be a bare address (legacy TCP) or a ws/wss URL. A wss
+    /// URL selects WebSocket with TLS, which is how the App Platform hosted AS is reached
+    /// </remarks>
+    public Transport AuthTransport { get; set; } = Transport.Tcp;
+
+    /// <summary>
+    /// Dial the auth server over TLS, wss instead of ws
+    /// </summary>
+    public bool AuthUseTls { get; set; }
 
     /// <summary>
     /// How often to send a heartbeat to the game server, in seconds

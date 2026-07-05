@@ -61,8 +61,9 @@ public static class Program
         // so the same external files the player edits drive the port
         services.AddSingleton<IOptions<ClientSettings>>(Options.Create(ClientSettingsLoader.Load()));
 
-        // networking, the client reaches the game server
-        services.AddSingleton<IMessageClient, TcpMessageClient>();
+        // networking, the client reaches the game server. The transport comes from settings so
+        // the client can dial a WebSocket server while still reaching a legacy TCP one
+        services.AddSingleton<IMessageClient>(BuildGameServerLink);
 
         // application services
         services.AddSingleton<IThemeService, ThemeService>();
@@ -94,5 +95,20 @@ public static class Program
         services.AddTransient<PasswordDialogViewModel>();
 
         return services.BuildServiceProvider();
+    }
+
+    // the game server link, game payloads carry evidence and animation so it takes the larger
+    // inbound cap. The AS link is built separately inside AuthServerLink from its own settings
+    private static IMessageClient BuildGameServerLink(IServiceProvider services)
+    {
+        var settings = services.GetRequiredService<IOptions<ClientSettings>>().Value;
+        var loggerFactory = services.GetRequiredService<ILoggerFactory>();
+
+        var options = new WebSocketTransportOptions
+        {
+            UseTls = settings.GameServerUseTls,
+            MaxInboundBytes = VNO.Core.Protocol.ProtocolConstants.MaxGameMessageBytes,
+        };
+        return MessageTransportFactory.CreateClient(settings.GameServerTransport, loggerFactory, options);
     }
 }
