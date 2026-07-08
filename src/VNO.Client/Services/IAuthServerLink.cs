@@ -71,6 +71,12 @@ public interface IAuthServerLink
     Task RequestServersAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Requests a short-lived, single-use credential for joining one game server
+    /// </summary>
+    /// <returns>The opaque credential, or <see langword="null"/> when it could not be issued</returns>
+    Task<string?> RequestGameTokenAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Closes the link to the auth server
     /// </summary>
     Task DisconnectAsync();

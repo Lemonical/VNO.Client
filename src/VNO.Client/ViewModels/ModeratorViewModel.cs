@@ -139,7 +139,9 @@ public sealed partial class ModeratorViewModel : ViewModelBase
     private async Task AuthenticateAsync()
     {
         // submit the staff password, the server replies granted or denied
-        await _server.SendAsync(new NetworkMessage(MessageType.ModeratorAuth, ModeratorPassword))
+        await _server.SendAsync(new NetworkMessage(
+            MessageType.ModeratorAuth,
+            LegacyHash.ToWireCredential(ModeratorPassword)))
             .ConfigureAwait(false);
         ModeratorPassword = string.Empty;
     }

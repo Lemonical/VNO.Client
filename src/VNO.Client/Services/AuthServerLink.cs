@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -28,10 +29,15 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
     private readonly ClientSettings _settings;
     private readonly IClientSession _session;
     private readonly ILogger<AuthServerLink> _logger;
+    private readonly SemaphoreSlim _maintenanceGate = new(1, 1);
 
     private Timer? _heartbeatTimer;
     private TaskCompletionSource<MasterLoginResult>? _pendingLogin;
     private TaskCompletionSource<AccountCreateResult>? _pendingCreate;
+    private TaskCompletionSource<string?>? _pendingGameToken;
+    private TaskCompletionSource<bool>? _pendingVersion;
+    private string? _accountName;
+    private string? _accountPassword;
 
     /// <summary>
     /// Creates the link with its dependencies
@@ -58,7 +64,16 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
         _client = MessageTransportFactory.CreateClient(_settings.AuthTransport, loggerFactory, transportOptions);
         _session = session;
         _logger = logger;
-        _client.StateChanged += (_, e) => StateChanged?.Invoke(this, e.State);
+        _client.StateChanged += (_, e) =>
+        {
+            if (e.State == ConnectionState.Disconnected)
+            {
+                _pendingVersion?.TrySetResult(false);
+                _pendingLogin?.TrySetResult(MasterLoginResult.NotConnected);
+                _pendingGameToken?.TrySetResult(null);
+            }
+            StateChanged?.Invoke(this, e.State);
+        };
         _client.MessageReceived += (_, e) => HandleMessage(e.Message);
     }
 
@@ -85,20 +100,14 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
     {
         try
         {
-            await _client.ConnectAsync(_settings.AuthServerHost, _settings.AuthServerPort, cancellationToken)
-                .ConfigureAwait(false);
-
-            // identify as a player client and state our version, the legacy VER#C#
-            // reply to the master's CV prompt so the AS can gate outdated clients
-            await _client.SendAsync(
-                new NetworkMessage(MessageType.VersionCheck, "client", ProtocolConstants.ClientVersion),
-                cancellationToken).ConfigureAwait(false);
-
-            StartHeartbeat();
+            if (await ConnectAndVerifyAsync(cancellationToken).ConfigureAwait(false))
+            {
+                StartMaintenance();
+            }
         }
         catch (Exception ex)
         {
-            // a missing AS is not fatal, the legacy client dropped to guest mode
+            // Master is authoritative; surface the failure and remain on the login screen.
             _logger.LogWarning(ex, "Could not reach the auth server");
             ConnectFailed?.Invoke(this, EventArgs.Empty);
         }
@@ -115,9 +124,17 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
 
         var pending = new TaskCompletionSource<MasterLoginResult>(TaskCreationOptions.RunContinuationsAsynchronously);
         _pendingLogin = pending;
-        await _client.SendAsync(new NetworkMessage(MessageType.MasterLogin, username, password), cancellationToken)
+        var credential = LegacyHash.ToWireCredential(password);
+        await _client.SendAsync(new NetworkMessage(MessageType.MasterLogin, username, credential), cancellationToken)
             .ConfigureAwait(false);
-        return await AwaitReplyAsync(pending, MasterLoginResult.TimedOut, cancellationToken).ConfigureAwait(false);
+        var result = await AwaitReplyAsync(pending, MasterLoginResult.TimedOut, cancellationToken)
+            .ConfigureAwait(false);
+        if (result == MasterLoginResult.Granted)
+        {
+            _accountName = username;
+            _accountPassword = credential;
+        }
+        return result;
     }
 
     /// <inheritdoc />
@@ -131,7 +148,9 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
 
         var pending = new TaskCompletionSource<AccountCreateResult>(TaskCreationOptions.RunContinuationsAsynchronously);
         _pendingCreate = pending;
-        await _client.SendAsync(new NetworkMessage(MessageType.CreateAccount, username, password), cancellationToken)
+        await _client.SendAsync(
+            new NetworkMessage(MessageType.CreateAccount, username, LegacyHash.ToWireCredential(password)),
+            cancellationToken)
             .ConfigureAwait(false);
         return await AwaitReplyAsync(pending, AccountCreateResult.TimedOut, cancellationToken).ConfigureAwait(false);
     }
@@ -143,6 +162,32 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
             : Task.CompletedTask;
 
     /// <inheritdoc />
+    public async Task<string?> RequestGameTokenAsync(CancellationToken cancellationToken = default)
+    {
+        if (_client.State != ConnectionState.Connected)
+        {
+            return null;
+        }
+
+        var pending = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (Interlocked.CompareExchange(ref _pendingGameToken, pending, null) is not null)
+        {
+            return null;
+        }
+
+        try
+        {
+            await _client.SendAsync(NetworkMessage.Create(MessageType.GameTokenRequest), cancellationToken)
+                .ConfigureAwait(false);
+            return await AwaitReplyAsync(pending, null, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            Interlocked.CompareExchange(ref _pendingGameToken, null, pending);
+        }
+    }
+
+    /// <inheritdoc />
     public async Task DisconnectAsync()
     {
         if (_heartbeatTimer is not null)
@@ -152,6 +197,8 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
         }
 
         await _client.DisconnectAsync().ConfigureAwait(false);
+        _accountName = null;
+        _accountPassword = null;
     }
 
     /// <inheritdoc />
@@ -166,14 +213,12 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
         switch (message.Type)
         {
             case MessageType.VersionAccepted:
-                // the legacy VEROK payload is the news text with | as line breaks,
-                // and the client immediately asked for the server list
-                NewsReceived?.Invoke(this, message.GetArgument(0).Replace('|', '\n'));
-                _ = RequestServersAsync();
+                _pendingVersion?.TrySetResult(true);
                 break;
 
             case MessageType.VersionRejected:
             case MessageType.AddressBanned:
+                _pendingVersion?.TrySetResult(false);
                 VersionRejected?.Invoke(this, EventArgs.Empty);
                 break;
 
@@ -191,6 +236,8 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
                 break;
 
             case MessageType.LoginGranted:
+                NewsReceived?.Invoke(this, message.GetArgument(1).Replace('|', '\n'));
+                ExpandLoginSnapshot(message);
                 _pendingLogin?.TrySetResult(MasterLoginResult.Granted);
                 break;
 
@@ -213,6 +260,11 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
             case MessageType.AccountInvalid:
                 _pendingCreate?.TrySetResult(AccountCreateResult.Invalid);
                 break;
+
+            case MessageType.GameTokenIssued:
+                var token = message.GetArgument(0);
+                _pendingGameToken?.TrySetResult(string.IsNullOrWhiteSpace(token) ? null : token);
+                break;
         }
     }
 
@@ -234,6 +286,74 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
         return listing.Name.Length > 0 && listing.Host.Length > 0;
     }
 
+    private void ExpandLoginSnapshot(NetworkMessage message)
+    {
+        if (message.Arguments.Count <= 2)
+        {
+            return;
+        }
+
+        var offset = 2;
+        if (!TryReadCount(message.Arguments, ref offset, 7, out var serverCount))
+        {
+            return;
+        }
+
+        var servers = new List<ServerListing>(serverCount);
+        for (var index = 0; index < serverCount; index++)
+        {
+            var entry = new NetworkMessage(
+                MessageType.ServerEntry,
+                message.Arguments[offset],
+                message.Arguments[offset + 1],
+                message.Arguments[offset + 2],
+                message.Arguments[offset + 3],
+                message.Arguments[offset + 4],
+                message.Arguments[offset + 5],
+                message.Arguments[offset + 6]);
+            if (!TryParseListing(entry, out var listing))
+            {
+                return;
+            }
+            servers.Add(listing);
+            offset += 7;
+        }
+
+        if (!TryReadCount(message.Arguments, ref offset, 2, out var badgeCount) ||
+            offset + (badgeCount * 2) != message.Arguments.Count)
+        {
+            return;
+        }
+
+        var badges = new List<(string Name, string Badge)>(badgeCount);
+        for (var index = 0; index < badgeCount; index++)
+        {
+            badges.Add((message.Arguments[offset++], message.Arguments[offset++]));
+        }
+
+        foreach (var server in servers)
+        {
+            ServerDiscovered?.Invoke(this, server);
+        }
+        foreach (var badge in badges)
+        {
+            _session.SetBadge(badge.Name, badge.Badge);
+        }
+    }
+
+    private static bool TryReadCount(
+        IReadOnlyList<string> fields,
+        ref int offset,
+        int fieldsPerItem,
+        out int count)
+    {
+        count = 0;
+        return offset < fields.Count &&
+            int.TryParse(fields[offset++], NumberStyles.None, CultureInfo.InvariantCulture, out count) &&
+            count >= 0 &&
+            count <= (fields.Count - offset) / fieldsPerItem;
+    }
+
     private static async Task<T> AwaitReplyAsync<T>(
         TaskCompletionSource<T> pending, T timeoutResult, CancellationToken cancellationToken)
     {
@@ -242,18 +362,79 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
         return completed == pending.Task ? await pending.Task.ConfigureAwait(false) : timeoutResult;
     }
 
-    private void StartHeartbeat()
+    private void StartMaintenance()
     {
         var period = TimeSpan.FromSeconds(Math.Max(1, _settings.HeartbeatSeconds));
-        _heartbeatTimer = new Timer(_ => SendHeartbeat(), null, period, period);
+        _heartbeatTimer = new Timer(_ => _ = MaintainAsync(), null, period, period);
     }
 
-    private void SendHeartbeat()
+    private async Task MaintainAsync()
     {
-        if (_client.State == ConnectionState.Connected)
+        if (!await _maintenanceGate.WaitAsync(0).ConfigureAwait(false))
         {
-            // the master's dispatcher recognizes MasterHeartbeat as keepalive traffic
-            _ = _client.SendAsync(NetworkMessage.Create(MessageType.MasterHeartbeat));
+            return;
+        }
+
+        try
+        {
+            if (_client.State == ConnectionState.Connected)
+            {
+                await _client.SendAsync(NetworkMessage.Create(MessageType.MasterHeartbeat)).ConfigureAwait(false);
+                return;
+            }
+
+            if (_accountName is null || _accountPassword is null ||
+                !await ConnectAndVerifyAsync(CancellationToken.None).ConfigureAwait(false))
+            {
+                return;
+            }
+
+            var pending = new TaskCompletionSource<MasterLoginResult>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            _pendingLogin = pending;
+            await _client.SendAsync(
+                new NetworkMessage(MessageType.MasterLogin, _accountName, _accountPassword))
+                .ConfigureAwait(false);
+            var result = await AwaitReplyAsync(pending, MasterLoginResult.TimedOut, CancellationToken.None)
+                .ConfigureAwait(false);
+            if (result != MasterLoginResult.Granted)
+            {
+                _accountName = null;
+                _accountPassword = null;
+                await _client.DisconnectAsync().ConfigureAwait(false);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Reconnecting to the auth server failed");
+        }
+        finally
+        {
+            _maintenanceGate.Release();
+        }
+    }
+
+    private async Task<bool> ConnectAndVerifyAsync(CancellationToken cancellationToken)
+    {
+        await _client.ConnectAsync(_settings.AuthServerHost, _settings.AuthServerPort, cancellationToken)
+            .ConfigureAwait(false);
+        var pending = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _pendingVersion = pending;
+        try
+        {
+            await _client.SendAsync(
+                new NetworkMessage(MessageType.VersionCheck, "client", ProtocolConstants.ClientVersion),
+                cancellationToken).ConfigureAwait(false);
+            var accepted = await AwaitReplyAsync(pending, false, cancellationToken).ConfigureAwait(false);
+            if (!accepted)
+            {
+                await _client.DisconnectAsync().ConfigureAwait(false);
+            }
+            return accepted;
+        }
+        finally
+        {
+            _pendingVersion = null;
         }
     }
 }

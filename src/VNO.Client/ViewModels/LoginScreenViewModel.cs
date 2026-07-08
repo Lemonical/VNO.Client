@@ -214,13 +214,10 @@ public sealed partial class LoginScreenViewModel : ViewModelBase
 
     private void OnConnectFailed(object? sender, EventArgs e)
     {
-        // the legacy masterError path, the player continues as a guest on the
-        // server list with a warning instead of being stuck on the login screen
         Dispatcher.UIThread.Post(async () =>
         {
             await _windows.ShowMessageAsync(
-                "Connection to AS failed, logged in as guest, some features might not be available.");
-            _navigator.ShowServerList();
+                "Connection to the authentication server failed. Sign-in is required before joining a server.");
         });
     }
 
@@ -235,7 +232,7 @@ public sealed partial class LoginScreenViewModel : ViewModelBase
     private async Task IdentifyAsync()
     {
         // the legacy CO command sent the MD5 of the password box
-        var result = await _authLink.LoginAsync(UserName, LegacyHash.Md5Hex(Password));
+        var result = await _authLink.LoginAsync(UserName, LegacyHash.ToWireCredential(Password));
         switch (result)
         {
             case MasterLoginResult.Granted:
@@ -271,7 +268,7 @@ public sealed partial class LoginScreenViewModel : ViewModelBase
             return;
         }
 
-        var result = await _authLink.CreateAccountAsync(username, LegacyHash.Md5Hex(password));
+        var result = await _authLink.CreateAccountAsync(username, LegacyHash.ToWireCredential(password));
         TakenNotice = result switch
         {
             AccountCreateResult.Created => "Account created.",
@@ -289,7 +286,7 @@ public sealed partial class LoginScreenViewModel : ViewModelBase
         {
             _theme.WriteSetting("User", "enabled", "1");
             _theme.WriteSetting("User", "user", UserName);
-            _theme.WriteSetting("User", "pass", Password);
+            _theme.WriteSetting("User", "pass", LegacyHash.ToWireCredential(Password));
         }
         else
         {
