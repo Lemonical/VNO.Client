@@ -23,6 +23,7 @@ public sealed class ServerConnectionTests
     private sealed class FakeMessageClient : IMessageClient
     {
         public List<NetworkMessage> Sent { get; } = new();
+        public Action<NetworkMessage>? OnSend { get; set; }
         public ConnectionState State => ConnectionState.Connected;
         public event EventHandler<MessageReceivedEventArgs>? MessageReceived;
         public event EventHandler<ConnectionStateChangedEventArgs>? StateChanged;
@@ -33,6 +34,7 @@ public sealed class ServerConnectionTests
         public Task SendAsync(NetworkMessage message, CancellationToken cancellationToken = default)
         {
             Sent.Add(message);
+            OnSend?.Invoke(message);
             return Task.CompletedTask;
         }
 
@@ -40,8 +42,11 @@ public sealed class ServerConnectionTests
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
-        // keep the compiler from warning about the unused events
-        public void Raise() { MessageReceived?.Invoke(this, null!); StateChanged?.Invoke(this, null!); }
+        public void RaiseMessage(NetworkMessage message) =>
+            MessageReceived?.Invoke(this, new MessageReceivedEventArgs(string.Empty, message));
+
+        // keep the compiler from warning about the unused event
+        public void RaiseState() => StateChanged?.Invoke(this, null!);
     }
 
     private static ServerConnection Build(FakeMessageClient client) =>
@@ -72,5 +77,63 @@ public sealed class ServerConnectionTests
         var message = Assert.Single(client.Sent);
         Assert.Equal(MessageType.OutOfCharacter, message.Type);
         Assert.Equal("hello room", message.GetArgument(0));
+    }
+
+    [Fact]
+    public async Task Connect_performs_version_check_then_single_use_login_before_completing()
+    {
+        var client = new FakeMessageClient();
+        client.OnSend = message =>
+        {
+            if (message.Type == MessageType.VersionCheck)
+            {
+                client.RaiseMessage(NetworkMessage.Create(MessageType.VersionAccepted));
+            }
+            else if (message.Type == MessageType.Login)
+            {
+                client.RaiseMessage(new NetworkMessage(
+                    MessageType.JoinSnapshot,
+                    "1", "Court", "0", "1", "Phoenix"));
+            }
+        };
+        await using var connection = Build(client);
+
+        await connection.ConnectAsync("one-use-token", "game.example", 6541);
+
+        Assert.Collection(
+            client.Sent,
+            message =>
+            {
+                Assert.Equal(MessageType.VersionCheck, message.Type);
+                Assert.Equal("client", message.GetArgument(0));
+                Assert.Equal(ProtocolConstants.ClientVersion, message.GetArgument(1));
+            },
+            message =>
+            {
+                Assert.Equal(MessageType.Login, message.Type);
+                Assert.Equal("one-use-token", message.GetArgument(0));
+            });
+    }
+
+    [Fact]
+    public void Join_snapshot_expands_to_existing_definition_events()
+    {
+        var client = new FakeMessageClient();
+        var connection = Build(client);
+        var received = new List<NetworkMessage>();
+        connection.MessageReceived += (_, message) => received.Add(message);
+
+        client.RaiseMessage(new NetworkMessage(
+            MessageType.JoinSnapshot,
+            "2", "Court", "Lobby",
+            "1", "Cornered.mp3",
+            "2", "Phoenix", "Maya"));
+
+        Assert.Collection(
+            received,
+            message => Assert.Equal(new[] { "Court", "Lobby" }, message.Arguments),
+            message => Assert.Equal(new[] { "Cornered.mp3" }, message.Arguments),
+            message => Assert.Equal(new[] { "Phoenix", "Maya" }, message.Arguments),
+            message => Assert.Empty(message.Arguments));
     }
 }

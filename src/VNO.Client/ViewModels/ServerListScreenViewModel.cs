@@ -1,3 +1,4 @@
+using System;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
@@ -54,7 +55,6 @@ public sealed partial class ServerListScreenViewModel : ViewModelBase
     private readonly IWindowService _windows;
     private readonly IServerConnection _server;
     private readonly IClientSession _session;
-    private readonly string _displayName;
     private readonly Bitmap? _iconOn;
     private readonly Bitmap? _iconOff;
     private bool _hasDirectoryEntries;
@@ -96,9 +96,7 @@ public sealed partial class ServerListScreenViewModel : ViewModelBase
         _navigator = navigator;
         _server = server;
         _session = session;
-        _displayName = settings.Value.DisplayName;
-
-        // the server sends its roster right after the hello, before character
+        // the server sends its roster after Master-backed authentication, before character
         // select is shown, so capture it here into the shared session
         _server.MessageReceived += OnServerMessage;
         _authLink = authLink;
@@ -300,11 +298,18 @@ public sealed partial class ServerListScreenViewModel : ViewModelBase
             return;
         }
 
-        // the legacy connect opened the game socket then moved to character select
+        // Ask Master for a one-use handoff immediately before opening the game socket.
+        // The game server accepts no player messages until Master redeems it.
         LoadStatus = "Connecting...";
         try
         {
-            await _server.ConnectAsync(_displayName, server.Host, server.Port);
+            var handoffToken = await _authLink.RequestGameTokenAsync();
+            if (handoffToken is null)
+            {
+                throw new UnauthorizedAccessException("Master could not authorize this game connection");
+            }
+
+            await _server.ConnectAsync(handoffToken, server.Host, server.Port);
             LoadStatus = string.Empty;
             _navigator.ShowCharacterSelect();
         }

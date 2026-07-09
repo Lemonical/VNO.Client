@@ -32,11 +32,11 @@ public interface IServerConnection
     event EventHandler<ConnectionState>? StateChanged;
 
     /// <summary>
-    /// Connects to a game server and sends the hello. Host and port default to
-    /// the configured game server when not given, matching the legacy default
+    /// Connects to a game server and authenticates with a single-use Master handoff token.
+    /// Host and port default to the configured game server when not given
     /// </summary>
     Task ConnectAsync(
-        string displayName,
+        string handoffToken,
         string? host = null,
         int? port = null,
         CancellationToken cancellationToken = default);
