@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using VNO.Client.Services;
@@ -16,8 +17,8 @@ namespace VNO.Client.ViewModels;
 /// Ports groupbox_charselect from Form15. The roster is a paged five by five grid
 /// (twenty five cells per page like the skin), each cell drawn from the theme
 /// roster image. Selecting a slot shows its big art and name, taken slots are
-/// blocked, and Random rolls an available one. The roster loads from the local
-/// data folder until the game server streams a per server list
+/// blocked, and Random rolls an available one. The server owns the roster while
+/// local files supply presentation assets only
 /// </remarks>
 public sealed partial class CharacterSelectScreenViewModel : ViewModelBase
 {
@@ -31,6 +32,7 @@ public sealed partial class CharacterSelectScreenViewModel : ViewModelBase
     private readonly IServerConnection _server;
     private readonly List<CharacterSlotViewModel> _roster = new();
     private readonly Dictionary<string, RosterCharacter> _localByName = new();
+    private bool _selectionPending;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SelectCommand))]
@@ -89,6 +91,7 @@ public sealed partial class CharacterSelectScreenViewModel : ViewModelBase
         _session.ServerRosterChanged += (_, _) => BuildRoster();
         // taken flags arrive as players claim characters, grey those slots
         _session.TakenCharactersChanged += (_, _) => ApplyTakenFlags();
+        _server.MessageReceived += OnServerMessage;
     }
 
     private void ApplyTakenFlags()
@@ -104,11 +107,8 @@ public sealed partial class CharacterSelectScreenViewModel : ViewModelBase
     {
         _roster.Clear();
 
-        // prefer the server roster, falling back to the full local roster. A
-        // server named character with no local image still gets a slot
-        var names = _session.ServerRoster.Count > 0
-            ? _session.ServerRoster
-            : _localByName.Keys.ToList();
+        // The server owns the roster. Local definitions supply presentation assets only.
+        var names = _session.ServerRoster;
 
         var page = 1;
         var indexOnPage = 0;
@@ -225,19 +225,50 @@ public sealed partial class CharacterSelectScreenViewModel : ViewModelBase
     }
 
     [RelayCommand(CanExecute = nameof(CanSelect))]
-    private void Select()
+    private async Task Select()
     {
         var name = SelectedCharacter?.Name;
-        // claim the character on the server so other players see it taken
-        if (!string.IsNullOrEmpty(name))
+        if (string.IsNullOrEmpty(name) || _selectionPending)
         {
-            _ = _server.SendAsync(new VNO.Core.Protocol.NetworkMessage(
-                VNO.Core.Protocol.MessageType.PickCharacter, name));
+            return;
         }
-        // hand the chosen character to the stage through the shared session
-        _session.SelectedCharacter = name;
-        _navigator.ShowGameStage();
+
+        _selectionPending = true;
+        SelectCommand.NotifyCanExecuteChanged();
+        await _server.SendAsync(new VNO.Core.Protocol.NetworkMessage(
+            VNO.Core.Protocol.MessageType.PickCharacter, name));
     }
 
-    private bool CanSelect() => SelectedCharacter is { IsTaken: false };
+    private bool CanSelect() => !_selectionPending && SelectedCharacter is { IsTaken: false };
+
+    private void OnServerMessage(object? sender, VNO.Core.Protocol.NetworkMessage message)
+    {
+        if (!_selectionPending)
+        {
+            return;
+        }
+
+        var selected = SelectedCharacter?.Name;
+        if (message.Type == VNO.Core.Protocol.MessageType.CharacterSelected &&
+            string.Equals(message.GetArgument(0), selected, StringComparison.OrdinalIgnoreCase))
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                _selectionPending = false;
+                _session.SelectedCharacter = selected;
+                SelectCommand.NotifyCanExecuteChanged();
+                _navigator.ShowGameStage();
+            });
+        }
+        else if (message.Type == VNO.Core.Protocol.MessageType.CharacterTaken &&
+            message.Arguments.Any(name => string.Equals(name, selected, StringComparison.OrdinalIgnoreCase)))
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                _selectionPending = false;
+                ShowTakenNotice = true;
+                SelectCommand.NotifyCanExecuteChanged();
+            });
+        }
+    }
 }

@@ -11,7 +11,7 @@ using Xunit;
 namespace VNO.Client.Tests;
 
 /// <summary>
-/// Covers how character select chooses between the server roster and the local one
+/// Covers the server-authoritative character roster
 /// </summary>
 public sealed class CharacterSelectRosterTests
 {
@@ -73,12 +73,12 @@ public sealed class CharacterSelectRosterTests
     }
 
     [Fact]
-    public void Uses_local_roster_when_the_server_sent_none()
+    public void Does_not_fall_back_to_a_local_roster()
     {
         var vm = new CharacterSelectScreenViewModel(
             new FakeNavigator(), new FakeTheme(), new FakeRoster("Alpha", "Beta"), new ClientSession(), new FakeServer());
 
-        Assert.Equal(2, CountSlots(vm));
+        Assert.Equal(0, CountSlots(vm));
     }
 
     [Fact]
@@ -97,7 +97,7 @@ public sealed class CharacterSelectRosterTests
     [Fact]
     public void Taken_characters_from_the_session_mark_slots()
     {
-        var session = new ClientSession();
+        var session = new ClientSession { ServerRoster = new[] { "Alpha", "Beta" } };
         var vm = new CharacterSelectScreenViewModel(
             new FakeNavigator(), new FakeTheme(), new FakeRoster("Alpha", "Beta"), session, new FakeServer());
 
