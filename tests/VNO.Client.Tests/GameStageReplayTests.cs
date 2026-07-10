@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Media.Imaging;
@@ -18,7 +19,10 @@ public sealed class GameStageReplayTests
 {
     private sealed class FakeServer : IServerConnection
     {
-        public ConnectionState State => ConnectionState.Disconnected;
+        public ConnectionState State { get; init; } = ConnectionState.Disconnected;
+        public IReadOnlyList<string> Areas { get; init; } = Array.Empty<string>();
+        public IReadOnlyList<string> Music { get; init; } = Array.Empty<string>();
+        public IReadOnlyList<string> Users { get; init; } = Array.Empty<string>();
 #pragma warning disable CS0067 // required by the interface, not exercised here
         public event EventHandler<NetworkMessage>? MessageReceived;
         public event EventHandler<ConnectionState>? StateChanged;
@@ -116,5 +120,32 @@ public sealed class GameStageReplayTests
         vm.SaveReplayCommand.Execute(null);
 
         Assert.Null(theme.WrittenFile);
+    }
+
+    [Fact]
+    public void Construction_replays_connection_and_join_snapshots()
+    {
+        var server = new FakeServer
+        {
+            State = ConnectionState.Connected,
+            Areas = new[] { "Court", "Lobby" },
+            Music = new[] { "Cornered.mp3" },
+            Users = new[] { "Phoenix", "Maya" },
+        };
+
+        var vm = new GameStageViewModel(
+            server,
+            new FakeWindows(),
+            new CapturingTheme(),
+            new ClientSession(),
+            new FakeAssets(),
+            new FakeImages(),
+            new FakeAudio());
+
+        Assert.True(vm.IsConnected);
+        Assert.Equal("Connected", vm.ConnectionStatus);
+        Assert.Equal(new[] { "Court", "Lobby" }, vm.Areas.Select(area => area.Name));
+        Assert.Equal(new[] { "Cornered.mp3" }, vm.Music.Select(track => track.Name));
+        Assert.Equal(new[] { "Phoenix", "Maya" }, vm.Users);
     }
 }

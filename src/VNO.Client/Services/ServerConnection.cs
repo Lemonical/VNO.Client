@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
@@ -19,18 +20,34 @@ public sealed class ServerConnection : IServerConnection, IAsyncDisposable
 
     private readonly IMessageClient _client;
     private readonly ClientSettings _settings;
+    private readonly DiscordPresenceCoordinator? _discordPresence;
 
     private Timer? _heartbeatTimer;
     private TaskCompletionSource<bool>? _pendingVersion;
     private TaskCompletionSource<bool>? _pendingAuthentication;
+    private IReadOnlyList<string> _areas = Array.Empty<string>();
+    private IReadOnlyList<string> _music = Array.Empty<string>();
+    private IReadOnlyList<string> _users = Array.Empty<string>();
 
     /// <summary>
     /// Creates the connection with its dependencies
     /// </summary>
     public ServerConnection(IMessageClient client, IOptions<ClientSettings> settings)
+        : this(client, settings, null)
+    {
+    }
+
+    /// <summary>
+    /// Creates the connection and clears Rich Presence whenever gameplay disconnects.
+    /// </summary>
+    public ServerConnection(
+        IMessageClient client,
+        IOptions<ClientSettings> settings,
+        DiscordPresenceCoordinator? discordPresence)
     {
         _client = client;
         _settings = settings.Value;
+        _discordPresence = discordPresence;
         _client.MessageReceived += (_, e) => ForwardMessage(e.Message);
         _client.StateChanged += (_, e) =>
         {
@@ -38,6 +55,10 @@ public sealed class ServerConnection : IServerConnection, IAsyncDisposable
             {
                 _pendingVersion?.TrySetResult(false);
                 _pendingAuthentication?.TrySetResult(false);
+                if (_discordPresence is not null)
+                {
+                    _ = _discordPresence.ClearAsync();
+                }
             }
             StateChanged?.Invoke(this, e.State);
         };
@@ -45,6 +66,15 @@ public sealed class ServerConnection : IServerConnection, IAsyncDisposable
 
     /// <inheritdoc />
     public ConnectionState State => _client.State;
+
+    /// <inheritdoc />
+    public IReadOnlyList<string> Areas => _areas;
+
+    /// <inheritdoc />
+    public IReadOnlyList<string> Music => _music;
+
+    /// <inheritdoc />
+    public IReadOnlyList<string> Users => _users;
 
     /// <inheritdoc />
     public event EventHandler<NetworkMessage>? MessageReceived;
@@ -59,6 +89,9 @@ public sealed class ServerConnection : IServerConnection, IAsyncDisposable
         int? port = null,
         CancellationToken cancellationToken = default)
     {
+        _areas = Array.Empty<string>();
+        _music = Array.Empty<string>();
+        _users = Array.Empty<string>();
         await _client.ConnectAsync(
             host ?? _settings.GameServerHost, port ?? _settings.GameServerPort, cancellationToken)
             .ConfigureAwait(false);
@@ -66,7 +99,7 @@ public sealed class ServerConnection : IServerConnection, IAsyncDisposable
         var version = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         _pendingVersion = version;
         await _client.SendAsync(
-            new NetworkMessage(MessageType.VersionCheck, "client", ProtocolConstants.ClientVersion),
+            new NetworkMessage(MessageType.VersionCheck, "client", ProtocolConstants.ApplicationVersion),
             cancellationToken).ConfigureAwait(false);
         if (!await AwaitGateAsync(version, cancellationToken).ConfigureAwait(false))
         {
@@ -102,6 +135,10 @@ public sealed class ServerConnection : IServerConnection, IAsyncDisposable
         }
 
         await _client.DisconnectAsync().ConfigureAwait(false);
+        if (_discordPresence is not null)
+        {
+            await _discordPresence.ClearAsync().ConfigureAwait(false);
+        }
     }
 
     /// <inheritdoc />
@@ -151,6 +188,10 @@ public sealed class ServerConnection : IServerConnection, IAsyncDisposable
 
         if (message.Type != MessageType.JoinSnapshot)
         {
+            if (message.Type == MessageType.UserList)
+            {
+                _users = message.Arguments.ToArray();
+            }
             MessageReceived?.Invoke(this, message);
             return;
         }
@@ -173,6 +214,8 @@ public sealed class ServerConnection : IServerConnection, IAsyncDisposable
             return;
         }
 
+        _areas = areas;
+        _music = music;
         _pendingAuthentication?.TrySetResult(true);
         MessageReceived?.Invoke(this, new NetworkMessage(MessageType.AreaList, areas.ToArray()));
         MessageReceived?.Invoke(this, new NetworkMessage(MessageType.MusicList, music.ToArray()));

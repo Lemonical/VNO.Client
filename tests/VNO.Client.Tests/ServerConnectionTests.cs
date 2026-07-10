@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging.Abstractions;
 using VNO.Client.Services;
 using VNO.Core.Models;
 using VNO.Core.Networking;
@@ -106,7 +107,7 @@ public sealed class ServerConnectionTests
             {
                 Assert.Equal(MessageType.VersionCheck, message.Type);
                 Assert.Equal("client", message.GetArgument(0));
-                Assert.Equal(ProtocolConstants.ClientVersion, message.GetArgument(1));
+                Assert.Equal(ProtocolConstants.ApplicationVersion, message.GetArgument(1));
             },
             message =>
             {
@@ -135,5 +136,52 @@ public sealed class ServerConnectionTests
             message => Assert.Equal(new[] { "Cornered.mp3" }, message.Arguments),
             message => Assert.Equal(new[] { "Phoenix", "Maya" }, message.Arguments),
             message => Assert.Empty(message.Arguments));
+
+        Assert.Equal(new[] { "Court", "Lobby" }, connection.Areas);
+        Assert.Equal(new[] { "Cornered.mp3" }, connection.Music);
+    }
+
+    [Fact]
+    public void User_list_is_retained_for_late_stage_consumers()
+    {
+        var client = new FakeMessageClient();
+        var connection = Build(client);
+
+        client.RaiseMessage(new NetworkMessage(MessageType.UserList, "Phoenix", "Maya"));
+
+        Assert.Equal(new[] { "Phoenix", "Maya" }, connection.Users);
+    }
+
+    [Fact]
+    public async Task Disconnect_clears_discord_presence()
+    {
+        var client = new FakeMessageClient();
+        var presence = new RecordingPresenceService();
+        await using var coordinator = new DiscordPresenceCoordinator(
+            presence,
+            Options.Create(new ClientSettings { DiscordPresence = DiscordPresenceMode.Running }),
+            NullLogger<DiscordPresenceCoordinator>.Instance);
+        await using var connection = new ServerConnection(
+            client,
+            Options.Create(new ClientSettings()),
+            coordinator);
+
+        await connection.DisconnectAsync();
+
+        Assert.True(presence.ClearCount >= 1);
+    }
+
+    private sealed class RecordingPresenceService : IDiscordPresenceService
+    {
+        public int ClearCount { get; private set; }
+
+        public Task UpdateAsync(DiscordPresence presence, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task ClearAsync(CancellationToken cancellationToken = default)
+        {
+            ClearCount++;
+            return Task.CompletedTask;
+        }
     }
 }

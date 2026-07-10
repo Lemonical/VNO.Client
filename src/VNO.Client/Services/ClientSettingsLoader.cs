@@ -9,9 +9,8 @@ namespace VNO.Client.Services;
 /// </summary>
 /// <remarks>
 /// The original client never had a json config, it read its identity from
-/// data\settings.ini and its auth server list from data\AS.ini next to the
-/// executable. This loader reproduces that so the port is configured by the same
-/// external files a player already edits, not an appsettings.json. Every key is
+/// data\settings.ini next to the executable. The Master endpoint is intentionally
+/// owned by VNO.Core rather than player-editable data. Every key is
 /// read with a default so a missing or partial file degrades to the built in
 /// values instead of failing, matching the legacy tolerance
 /// </remarks>
@@ -21,7 +20,7 @@ public static class ClientSettingsLoader
     private const string DataDirectoryName = "data";
 
     /// <summary>
-    /// Reads settings.ini and AS.ini from the data folder and returns the settings
+    /// Reads settings.ini from the data folder and returns the settings
     /// </summary>
     public static ClientSettings Load() => Load(AppContext.BaseDirectory);
 
@@ -40,38 +39,11 @@ public static class ClientSettingsLoader
             settingsIni.ReadString("Network", "transport", string.Empty), settings.GameServerTransport);
         settings.GameServerUseTls = ReadBool(
             settingsIni.ReadString("Network", "tls", string.Empty), settings.GameServerUseTls);
-
-        // AS.ini is the auth server directory, the first numbered entry is primary. A bare
-        // address stays TCP, a ws or wss URL selects WebSocket and TLS
-        var authIni = DelphiIniFile.Load(Path.Combine(dataDirectory, "AS.ini"));
-        var primary = authIni.ReadString("AS", "1", string.Empty);
-        if (primary.Length > 0)
-        {
-            ApplyAuthEndpoint(settings, primary);
-        }
+        settings.DiscordPresence = ReadDiscordPresence(
+            settingsIni.ReadString("Discord", "presence", string.Empty));
+        settings.DiscordApplicationId = settingsIni.ReadString("Discord", "application_id", string.Empty).Trim();
 
         return settings;
-    }
-
-    // parse the primary auth entry, either a legacy host[:port] or a ws/wss URL
-    private static void ApplyAuthEndpoint(ClientSettings settings, string primary)
-    {
-        if (primary.StartsWith("ws://", StringComparison.OrdinalIgnoreCase) ||
-            primary.StartsWith("wss://", StringComparison.OrdinalIgnoreCase))
-        {
-            var uri = new Uri(primary);
-            settings.AuthTransport = Transport.WebSocket;
-            settings.AuthUseTls = string.Equals(uri.Scheme, "wss", StringComparison.OrdinalIgnoreCase);
-            settings.AuthServerHost = uri.Host;
-            settings.AuthServerPort = uri.IsDefaultPort
-                ? (settings.AuthUseTls ? 443 : 80)
-                : uri.Port;
-            return;
-        }
-
-        var (host, port) = SplitHostPort(primary, settings.AuthServerPort);
-        settings.AuthServerHost = host;
-        settings.AuthServerPort = port;
     }
 
     private static Transport ReadTransport(string value, Transport fallback) =>
@@ -91,15 +63,13 @@ public static class ClientSettingsLoader
             _ => fallback,
         };
 
-    // legacy AS.ini stored bare addresses, allow an optional :port suffix so a
-    // non default auth port can be set without a second key
-    private static (string Host, int Port) SplitHostPort(string value, int defaultPort)
-    {
-        var colon = value.LastIndexOf(':');
-        if (colon > 0 && int.TryParse(value[(colon + 1)..], out var port))
+    private static DiscordPresenceMode ReadDiscordPresence(string value) =>
+        value.Trim().ToLowerInvariant() switch
         {
-            return (value[..colon].Trim(), port);
-        }
-        return (value.Trim(), defaultPort);
-    }
+            "running" => DiscordPresenceMode.Running,
+            "server" or "publicserver" => DiscordPresenceMode.PublicServer,
+            "players" or "publicserverandplayercount" => DiscordPresenceMode.PublicServerAndPlayerCount,
+            _ => DiscordPresenceMode.Off,
+        };
+
 }

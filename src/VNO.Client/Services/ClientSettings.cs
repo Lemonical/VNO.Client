@@ -7,11 +7,21 @@ namespace VNO.Client.Services;
 /// </summary>
 /// <remarks>
 /// Loaded from the legacy data folder ini files by <see cref="ClientSettingsLoader"/>,
-/// data\settings.ini for the saved identity and data\AS.ini for the auth server.
-/// These replace the hard coded addresses found in the legacy Form15
+/// data\settings.ini for player-owned preferences. The public Master endpoint is
+/// defined centrally by VNO.Core so it cannot drift between Client and Server.
 /// </remarks>
 public sealed class ClientSettings
 {
+    /// <summary>
+    /// Privacy level for optional Discord Rich Presence. Defaults to off.
+    /// </summary>
+    public DiscordPresenceMode DiscordPresence { get; set; } = DiscordPresenceMode.Off;
+
+    /// <summary>
+    /// Public Discord application id used by local desktop IPC, never a client secret.
+    /// </summary>
+    public string DiscordApplicationId { get; set; } = string.Empty;
+
     /// <summary>
     /// Name the player shows to others by default
     /// </summary>
@@ -36,30 +46,6 @@ public sealed class ClientSettings
     /// Dial game servers over TLS, wss instead of ws
     /// </summary>
     public bool GameServerUseTls { get; set; }
-
-    /// <summary>
-    /// Host name or address of the auth server
-    /// </summary>
-    public string AuthServerHost { get; set; } = "127.0.0.1";
-
-    /// <summary>
-    /// TCP port of the auth server
-    /// </summary>
-    public int AuthServerPort { get; set; } = 6543;
-
-    /// <summary>
-    /// Which transport the client reaches the auth server over
-    /// </summary>
-    /// <remarks>
-    /// The auth server list entry may be a bare address (legacy TCP) or a ws/wss URL. A wss
-    /// URL selects WebSocket with TLS, which is how the App Platform hosted AS is reached
-    /// </remarks>
-    public Transport AuthTransport { get; set; } = Transport.Tcp;
-
-    /// <summary>
-    /// Dial the auth server over TLS, wss instead of ws
-    /// </summary>
-    public bool AuthUseTls { get; set; }
 
     /// <summary>
     /// How often to send a heartbeat to the game server, in seconds

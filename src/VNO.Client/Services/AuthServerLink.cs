@@ -30,6 +30,7 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
     private readonly IClientSession _session;
     private readonly ILogger<AuthServerLink> _logger;
     private readonly SemaphoreSlim _maintenanceGate = new(1, 1);
+    private readonly object _serverListingsGate = new();
 
     private Timer? _heartbeatTimer;
     private TaskCompletionSource<MasterLoginResult>? _pendingLogin;
@@ -38,6 +39,8 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
     private TaskCompletionSource<bool>? _pendingVersion;
     private string? _accountName;
     private string? _accountPassword;
+    private ConnectionState _state = ConnectionState.Disconnected;
+    private IReadOnlyList<ServerListing> _serverListings = Array.Empty<ServerListing>();
 
     /// <summary>
     /// Creates the link with its dependencies
@@ -51,17 +54,18 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
         IOptions<ClientSettings> settings,
         IClientSession session,
         ILogger<AuthServerLink> logger)
+        : this(CreateClient(loggerFactory), settings, session, logger)
+    {
+    }
+
+    internal AuthServerLink(
+        IMessageClient client,
+        IOptions<ClientSettings> settings,
+        IClientSession session,
+        ILogger<AuthServerLink> logger)
     {
         _settings = settings.Value;
-
-        // the AS link picks its transport from settings, wss to the App Platform hosted AS or
-        // TCP to a legacy one. Small frames, so the tight auth inbound cap applies
-        var transportOptions = new WebSocketTransportOptions
-        {
-            UseTls = _settings.AuthUseTls,
-            MaxInboundBytes = ProtocolConstants.MaxAuthMessageBytes,
-        };
-        _client = MessageTransportFactory.CreateClient(_settings.AuthTransport, loggerFactory, transportOptions);
+        _client = client;
         _session = session;
         _logger = logger;
         _client.StateChanged += (_, e) =>
@@ -71,14 +75,46 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
                 _pendingVersion?.TrySetResult(false);
                 _pendingLogin?.TrySetResult(MasterLoginResult.NotConnected);
                 _pendingGameToken?.TrySetResult(null);
+                SetState(ConnectionState.Disconnected);
+                return;
             }
-            StateChanged?.Invoke(this, e.State);
+
+            if (e.State != ConnectionState.Connected)
+            {
+                SetState(e.State);
+            }
         };
         _client.MessageReceived += (_, e) => HandleMessage(e.Message);
     }
 
+    private static IMessageClient CreateClient(ILoggerFactory loggerFactory)
+    {
+        // the public AS endpoint is shared through Core so Client and Server cannot drift
+        var transportOptions = new WebSocketTransportOptions
+        {
+            UseTls = MasterServerEndpoint.UseTls,
+            MaxInboundBytes = ProtocolConstants.MaxAuthMessageBytes,
+        };
+        return MessageTransportFactory.CreateClient(
+            MasterServerEndpoint.Transport,
+            loggerFactory,
+            transportOptions);
+    }
+
     /// <inheritdoc />
-    public ConnectionState State => _client.State;
+    public ConnectionState State => _state;
+
+    /// <inheritdoc />
+    public IReadOnlyList<ServerListing> ServerListings
+    {
+        get
+        {
+            lock (_serverListingsGate)
+            {
+                return _serverListings;
+            }
+        }
+    }
 
     /// <inheritdoc />
     public event EventHandler<ConnectionState>? StateChanged;
@@ -108,6 +144,7 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
         catch (Exception ex)
         {
             // Master is authoritative; surface the failure and remain on the login screen.
+            SetState(ConnectionState.Faulted);
             _logger.LogWarning(ex, "Could not reach the auth server");
             ConnectFailed?.Invoke(this, EventArgs.Empty);
         }
@@ -117,7 +154,7 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
     public async Task<MasterLoginResult> LoginAsync(
         string username, string password, CancellationToken cancellationToken = default)
     {
-        if (_client.State != ConnectionState.Connected)
+        if (State != ConnectionState.Connected)
         {
             return MasterLoginResult.NotConnected;
         }
@@ -141,7 +178,7 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
     public async Task<AccountCreateResult> CreateAccountAsync(
         string username, string password, CancellationToken cancellationToken = default)
     {
-        if (_client.State != ConnectionState.Connected)
+        if (State != ConnectionState.Connected)
         {
             return AccountCreateResult.NotConnected;
         }
@@ -157,14 +194,14 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
 
     /// <inheritdoc />
     public Task RequestServersAsync(CancellationToken cancellationToken = default) =>
-        _client.State == ConnectionState.Connected
+        State == ConnectionState.Connected
             ? _client.SendAsync(NetworkMessage.Create(MessageType.RequestServers), cancellationToken)
             : Task.CompletedTask;
 
     /// <inheritdoc />
     public async Task<string?> RequestGameTokenAsync(CancellationToken cancellationToken = default)
     {
-        if (_client.State != ConnectionState.Connected)
+        if (State != ConnectionState.Connected)
         {
             return null;
         }
@@ -197,6 +234,7 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
         }
 
         await _client.DisconnectAsync().ConfigureAwait(false);
+        SetState(ConnectionState.Disconnected);
         _accountName = null;
         _accountPassword = null;
     }
@@ -213,6 +251,11 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
         switch (message.Type)
         {
             case MessageType.VersionAccepted:
+                var news = message.GetArgument(0);
+                if (!string.IsNullOrEmpty(news))
+                {
+                    NewsReceived?.Invoke(this, news.Replace('|', '\n'));
+                }
                 _pendingVersion?.TrySetResult(true);
                 break;
 
@@ -222,9 +265,15 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
                 VersionRejected?.Invoke(this, EventArgs.Empty);
                 break;
 
+            case MessageType.AccountBanned when _pendingVersion is not null:
+                _pendingVersion.TrySetResult(false);
+                VersionRejected?.Invoke(this, EventArgs.Empty);
+                break;
+
             case MessageType.ServerEntry:
                 if (TryParseListing(message, out var listing))
                 {
+                    RetainServerListing(listing);
                     ServerDiscovered?.Invoke(this, listing);
                 }
                 break;
@@ -236,7 +285,11 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
                 break;
 
             case MessageType.LoginGranted:
-                NewsReceived?.Invoke(this, message.GetArgument(1).Replace('|', '\n'));
+                var loginNews = message.GetArgument(1);
+                if (!string.IsNullOrEmpty(loginNews))
+                {
+                    NewsReceived?.Invoke(this, loginNews.Replace('|', '\n'));
+                }
                 ExpandLoginSnapshot(message);
                 _pendingLogin?.TrySetResult(MasterLoginResult.Granted);
                 break;
@@ -331,6 +384,11 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
             badges.Add((message.Arguments[offset++], message.Arguments[offset++]));
         }
 
+        lock (_serverListingsGate)
+        {
+            _serverListings = [.. servers];
+        }
+
         foreach (var server in servers)
         {
             ServerDiscovered?.Invoke(this, server);
@@ -352,6 +410,36 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
             int.TryParse(fields[offset++], NumberStyles.None, CultureInfo.InvariantCulture, out count) &&
             count >= 0 &&
             count <= (fields.Count - offset) / fieldsPerItem;
+    }
+
+    private void RetainServerListing(ServerListing listing)
+    {
+        lock (_serverListingsGate)
+        {
+            var listings = new List<ServerListing>(_serverListings);
+            var existing = listings.FindIndex(candidate =>
+                candidate.Host == listing.Host && candidate.Port == listing.Port);
+            if (existing >= 0)
+            {
+                listings[existing] = listing;
+            }
+            else
+            {
+                listings.Add(listing);
+            }
+            _serverListings = [.. listings];
+        }
+    }
+
+    private void SetState(ConnectionState state)
+    {
+        if (_state == state)
+        {
+            return;
+        }
+
+        _state = state;
+        StateChanged?.Invoke(this, state);
     }
 
     private static async Task<T> AwaitReplyAsync<T>(
@@ -416,19 +504,25 @@ public sealed class AuthServerLink : IAuthServerLink, IAsyncDisposable
 
     private async Task<bool> ConnectAndVerifyAsync(CancellationToken cancellationToken)
     {
-        await _client.ConnectAsync(_settings.AuthServerHost, _settings.AuthServerPort, cancellationToken)
+        SetState(ConnectionState.Connecting);
+        await _client.ConnectAsync(MasterServerEndpoint.Host, MasterServerEndpoint.Port, cancellationToken)
             .ConfigureAwait(false);
         var pending = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         _pendingVersion = pending;
         try
         {
             await _client.SendAsync(
-                new NetworkMessage(MessageType.VersionCheck, "client", ProtocolConstants.ClientVersion),
+                new NetworkMessage(MessageType.VersionCheck, "client", ProtocolConstants.ApplicationVersion),
                 cancellationToken).ConfigureAwait(false);
             var accepted = await AwaitReplyAsync(pending, false, cancellationToken).ConfigureAwait(false);
             if (!accepted)
             {
                 await _client.DisconnectAsync().ConfigureAwait(false);
+                SetState(ConnectionState.Disconnected);
+            }
+            else
+            {
+                SetState(ConnectionState.Connected);
             }
             return accepted;
         }

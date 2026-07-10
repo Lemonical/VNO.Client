@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using VNO.Core.Models;
@@ -20,6 +21,15 @@ public interface IServerConnection
     /// Current state of the link
     /// </summary>
     ConnectionState State { get; }
+
+    /// <summary>Latest area definitions received while joining the server.</summary>
+    IReadOnlyList<string> Areas => Array.Empty<string>();
+
+    /// <summary>Latest music definitions received while joining the server.</summary>
+    IReadOnlyList<string> Music => Array.Empty<string>();
+
+    /// <summary>Latest visible users received for the current area.</summary>
+    IReadOnlyList<string> Users => Array.Empty<string>();
 
     /// <summary>
     /// Raised when any message arrives from the server

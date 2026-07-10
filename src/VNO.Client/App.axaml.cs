@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
+using VNO.Client.Services;
 using VNO.Client.ViewModels;
 using VNO.Client.Views;
 
@@ -39,6 +40,12 @@ public sealed class App : Application
         {
             var viewModel = _services.GetService<MainWindowViewModel>();
             desktop.MainWindow = new MainWindow { DataContext = viewModel };
+            var discordPresence = _services.GetService<DiscordPresenceCoordinator>();
+            if (discordPresence is not null)
+            {
+                _ = discordPresence.StartAsync();
+                desktop.Exit += async (_, _) => await discordPresence.DisposeAsync();
+            }
         }
 
         base.OnFrameworkInitializationCompleted();

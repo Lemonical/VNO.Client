@@ -38,13 +38,9 @@
     <ProjectReference Include="..\..\external\VNO.Core\src\VNO.Core\VNO.Core.csproj" />
   </ItemGroup>
 
-  <!-- default player config, read from the external data folder at runtime the way
-       the legacy client read data\settings.ini and data\AS.ini -->
+  <!-- default player preferences, read from the external data folder at runtime -->
   <ItemGroup>
     <None Update="data\settings.ini">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="data\AS.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

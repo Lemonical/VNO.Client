@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using VNO.Core.Models;
@@ -21,6 +22,11 @@ public interface IAuthServerLink
     /// Current state of the link to the auth server
     /// </summary>
     ConnectionState State { get; }
+
+    /// <summary>
+    /// Latest public server directory received from the authentication server.
+    /// </summary>
+    IReadOnlyList<ServerListing> ServerListings => Array.Empty<ServerListing>();
 
     /// <summary>
     /// Raised when the link state changes

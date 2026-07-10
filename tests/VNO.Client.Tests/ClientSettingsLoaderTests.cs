@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using VNO.Core.Networking;
 using VNO.Client.Services;
 using Xunit;
 
@@ -34,9 +35,26 @@ public sealed class ClientSettingsLoaderTests : IDisposable
         var settings = ClientSettingsLoader.Load(_baseDirectory);
 
         Assert.Equal("Player", settings.DisplayName);
-        Assert.Equal("127.0.0.1", settings.AuthServerHost);
-        Assert.Equal(6543, settings.AuthServerPort);
+        Assert.Equal("vno-master-rjrun.ondigitalocean.app", MasterServerEndpoint.Host);
+        Assert.Equal(443, MasterServerEndpoint.Port);
+        Assert.Equal(Transport.WebSocket, MasterServerEndpoint.Transport);
+        Assert.True(MasterServerEndpoint.UseTls);
         Assert.Equal(16789, settings.GameServerPort);
+        Assert.Equal(DiscordPresenceMode.Off, settings.DiscordPresence);
+        Assert.Empty(settings.DiscordApplicationId);
+    }
+
+    [Fact]
+    public void Reads_discord_privacy_and_public_application_id()
+    {
+        WriteData(
+            "settings.ini",
+            "[Discord]\npresence=PublicServerAndPlayerCount\napplication_id=123456789\n");
+
+        var settings = ClientSettingsLoader.Load(_baseDirectory);
+
+        Assert.Equal(DiscordPresenceMode.PublicServerAndPlayerCount, settings.DiscordPresence);
+        Assert.Equal("123456789", settings.DiscordApplicationId);
     }
 
     [Fact]
@@ -49,25 +67,4 @@ public sealed class ClientSettingsLoaderTests : IDisposable
         Assert.Equal("Phoenix", settings.DisplayName);
     }
 
-    [Fact]
-    public void Reads_the_primary_auth_server_from_AS_ini_with_optional_port()
-    {
-        WriteData("AS.ini", "[AS]\n1=auth.example:7000\n2=backup.example\n");
-
-        var settings = ClientSettingsLoader.Load(_baseDirectory);
-
-        Assert.Equal("auth.example", settings.AuthServerHost);
-        Assert.Equal(7000, settings.AuthServerPort);
-    }
-
-    [Fact]
-    public void A_bare_auth_address_keeps_the_default_port()
-    {
-        WriteData("AS.ini", "[AS]\n1=auth.example\n");
-
-        var settings = ClientSettingsLoader.Load(_baseDirectory);
-
-        Assert.Equal("auth.example", settings.AuthServerHost);
-        Assert.Equal(6543, settings.AuthServerPort);
-    }
 }

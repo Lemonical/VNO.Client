@@ -55,6 +55,7 @@ public sealed partial class ServerListScreenViewModel : ViewModelBase
     private readonly IWindowService _windows;
     private readonly IServerConnection _server;
     private readonly IClientSession _session;
+    private readonly DiscordPresenceCoordinator _discordPresence;
     private readonly Bitmap? _iconOn;
     private readonly Bitmap? _iconOff;
     private bool _hasDirectoryEntries;
@@ -91,11 +92,13 @@ public sealed partial class ServerListScreenViewModel : ViewModelBase
         IAuthServerLink authLink,
         IWindowService windows,
         IServerConnection server,
-        IClientSession session)
+        IClientSession session,
+        DiscordPresenceCoordinator discordPresence)
     {
         _navigator = navigator;
         _server = server;
         _session = session;
+        _discordPresence = discordPresence;
         // the server sends its roster after Master-backed authentication, before character
         // select is shown, so capture it here into the shared session
         _server.MessageReceived += OnServerMessage;
@@ -120,6 +123,10 @@ public sealed partial class ServerListScreenViewModel : ViewModelBase
         RefreshSlotIcons();
 
         _authLink.ServerDiscovered += OnServerDiscovered;
+        foreach (var listing in _authLink.ServerListings)
+        {
+            ApplyServerListing(listing);
+        }
     }
 
     private void LoadFavorites()
@@ -178,31 +185,33 @@ public sealed partial class ServerListScreenViewModel : ViewModelBase
     {
         // entries arrive off the UI thread, one per legacy SDA packet. The first
         // directory entry replaces the configuration seed
-        Dispatcher.UIThread.Post(() =>
+        Dispatcher.UIThread.Post(() => ApplyServerListing(listing));
+    }
+
+    private void ApplyServerListing(ServerListing listing)
+    {
+        if (!_hasDirectoryEntries)
         {
-            if (!_hasDirectoryEntries)
-            {
-                _hasDirectoryEntries = true;
-                Servers.Clear();
-            }
+            _hasDirectoryEntries = true;
+            Servers.Clear();
+        }
 
-            var existing = Servers.FirstOrDefault(s => s.Host == listing.Host && s.Port == listing.Port);
-            if (existing is not null)
-            {
-                Servers.Remove(existing);
-            }
+        var existing = Servers.FirstOrDefault(s => s.Host == listing.Host && s.Port == listing.Port);
+        if (existing is not null)
+        {
+            Servers.Remove(existing);
+        }
 
-            Servers.Add(new ServerEntryViewModel
-            {
-                Name = listing.Name,
-                Host = listing.Host,
-                Port = listing.Port,
-                Description = listing.Description,
-                PlayerCount = "Unknown"
-            });
-            LoadStatus = string.Empty;
-            RefreshSlotIcons();
+        Servers.Add(new ServerEntryViewModel
+        {
+            Name = listing.Name,
+            Host = listing.Host,
+            Port = listing.Port,
+            Description = listing.Description,
+            PlayerCount = "Unknown"
         });
+        LoadStatus = string.Empty;
+        RefreshSlotIcons();
     }
 
     /// <summary>
@@ -310,6 +319,13 @@ public sealed partial class ServerListScreenViewModel : ViewModelBase
             }
 
             await _server.ConnectAsync(handoffToken, server.Host, server.Port);
+            var isPublicDirectoryEntry = _hasDirectoryEntries &&
+                ActiveTab == ServerListTab.Servers &&
+                Servers.Contains(server);
+            await _discordPresence.ShowServerAsync(
+                server.Name,
+                isPublicDirectoryEntry,
+                server.PlayerCount);
             LoadStatus = string.Empty;
             _navigator.ShowCharacterSelect();
         }

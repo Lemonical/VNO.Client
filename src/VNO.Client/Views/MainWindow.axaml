@@ -6,12 +6,15 @@
         x:DataType="vm:MainWindowViewModel"
         Title="VNO Remix Beta: 3rd Strike"
         SizeToContent="WidthAndHeight"
-        CanResize="False"
+        CanResize="True"
+        CanMaximize="False"
         WindowStartupLocation="CenterScreen"
         Background="White">
 
     <!-- The shell hosts whichever screen the navigator has made current.
          The original Form15 resized itself per screen, so the window sizes to the
          active screen view. The view locator turns the screen view model into its view -->
-    <ContentControl Content="{Binding Navigator.CurrentScreen}" />
+    <Viewbox Stretch="Uniform">
+        <ContentControl Content="{Binding Navigator.CurrentScreen}" />
+    </Viewbox>
 </Window>

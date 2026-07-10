@@ -131,6 +131,11 @@ public sealed partial class GameStageViewModel : ViewModelBase
 
         _server.MessageReceived += OnMessageReceived;
         _server.StateChanged += OnStateChanged;
+        ConnectionStatus = _server.State.ToString();
+        IsConnected = _server.State == ConnectionState.Connected;
+        PopulateAreas(new NetworkMessage(MessageType.AreaList, _server.Areas.ToArray()));
+        PopulateMusic(new NetworkMessage(MessageType.MusicList, _server.Music.ToArray()));
+        PopulateUsers(new NetworkMessage(MessageType.UserList, _server.Users.ToArray()));
 
         // start on a default scene background until the server sets one
         SceneBackground = _assets.LoadDefaultBackground();

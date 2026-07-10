@@ -54,7 +54,7 @@ public sealed partial class LoginScreenViewModel : ViewModelBase
     /// <summary>
     /// Runtime caption FormCreate put on label_version in the original client
     /// </summary>
-    public string Version { get; } = "Remix 3rd Strike";
+    public string Version { get; } = ProtocolConstants.ApplicationVersion;
 
     /// <summary>
     /// Login skin from the theme folder, null when the theme has no login.png
@@ -248,6 +248,9 @@ public sealed partial class LoginScreenViewModel : ViewModelBase
             case MasterLoginResult.TimedOut:
                 await _windows.ShowMessageAsync("The auth server did not answer.");
                 break;
+            case MasterLoginResult.NotConnected:
+                await _windows.ShowMessageAsync("The auth server is not connected.");
+                break;
         }
     }
 
@@ -275,6 +278,7 @@ public sealed partial class LoginScreenViewModel : ViewModelBase
             AccountCreateResult.Taken => "Account name already taken.",
             AccountCreateResult.Invalid => "Account couldn't be created.",
             AccountCreateResult.TimedOut => "The auth server did not answer.",
+            AccountCreateResult.NotConnected => "The auth server is not connected.",
             _ => TakenNotice,
         };
     }

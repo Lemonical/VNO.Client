@@ -72,6 +72,10 @@ public static class Program
         services.AddSingleton<IClientSession, ClientSession>();
         services.AddSingleton<IImageFetcher, ImageFetcher>();
         services.AddSingleton<IAudioService, BassAudioService>();
+        services.AddSingleton<IDiscordPresenceService>(sp =>
+            new DiscordRpcPresenceService(
+                sp.GetRequiredService<IOptions<ClientSettings>>().Value.DiscordApplicationId));
+        services.AddSingleton<DiscordPresenceCoordinator>();
         services.AddSingleton<IServerConnection, ServerConnection>();
         services.AddSingleton<IAuthServerLink, AuthServerLink>();
         services.AddSingleton<IWindowService, WindowService>();
