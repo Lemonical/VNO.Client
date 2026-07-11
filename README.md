@@ -1,92 +1,71 @@
-# Visual Novel Online Client
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Lemonical/VNO.Core/refs/heads/main/docs/assets/vno-icon.png" width="96" alt="Visual Novel Online icon">
+</p>
 
-Desktop player client for Visual Novel Online, built with .NET 10 and Avalonia 12.
+<h1 align="center">Visual Novel Online Client</h1>
 
-## Overview
+<p align="center">The cross-platform desktop player for Visual Novel Online.</p>
 
-`VNO.Client` is the player-facing desktop application for the Visual Novel Online stack. It connects to:
+<p align="center">
+  <a href="https://dotnet.microsoft.com/"><img alt=".NET 10" src="https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white"></a>
+  <a href="https://avaloniaui.net/"><img alt="Avalonia 12" src="https://img.shields.io/badge/Avalonia-12.0.4-8B44AC"></a>
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/github/license/Lemonical/VNO.Client"></a>
+  <a href="https://github.com/Lemonical/VNO.Client/commits/main"><img alt="Last commit" src="https://img.shields.io/github/last-commit/Lemonical/VNO.Client/main"></a>
+  <a href="https://github.com/Lemonical/VNO.Client/issues"><img alt="Open issues" src="https://img.shields.io/github/issues/Lemonical/VNO.Client"></a>
+</p>
 
-- `VNO.Master` for account login, version checks, news and the public server list
-- `VNO.Server` for in-scene chat, areas, music, roster selection, moderation events and other live gameplay traffic
+`VNO.Client` is the player-facing application in the Visual Novel Online stack. It uses `VNO.Master` for accounts, version policy, news, public server discovery, badges, and short-lived game handoffs, then connects to `VNO.Server` for live play.
 
-This port preserves the original VNO content model. Themes, roster art, character sprites, backgrounds, sounds and INI-driven UI settings are loaded from a runtime `data/` folder instead of being embedded into the application assembly. However, this might change as time goes by.
+The port deliberately preserves the external legacy content model: themes, characters, backgrounds, sounds, and related assets are loaded from a runtime `data/` directory rather than embedded in the application.
 
-## Project Status
-
-This project is currently under active development. It is a modern .NET and Avalonia port of the legacy VNO desktop client, with the original asset layout, theme system and protocol conventions intentionally preserved.
+> [!IMPORTANT]
+> This project is under active development. Build from source; installers and official binary releases are not currently provided by this repository.
 
 ## Features
 
-Current features include:
+- Avalonia MVVM desktop UI for login, server browsing, character selection, and the game stage
+- Account login and creation, version checks, news, public discovery, and authenticated game handoff
+- TCP and WebSocket/WSS connections through the shared `VNO.Core` protocol
+- In-character and out-of-character chat, areas, music, rosters, stage effects, HP/MP, and self visibility
+- Legacy theme, sprite, emote, background, big-art, sound, and INI loading
+- Master-issued speaker badges and moderator-facing gameplay flows
+- Replay behavior and BASS-backed audio with graceful no-audio fallback when native BASS is absent
+- Privacy-tiered Discord Rich Presence over local desktop IPC, disabled by default
+- Automated coverage for assets, settings, protocol-facing services, replay, and moderation behavior
 
-- Avalonia desktop GUI for login, server selection, character selection and the game stage
-- Shared protocol layer through the `external/VNO.Core` submodule
-- Master Server login, version-check and server-list integration
-- Direct game server connection support
-- Legacy theme loading from `data/UI/<design>/design.ini`
-- Character roster, emote, background and big-art loading from the legacy asset tree
-- Master-owned badges drawn beside speakers, delivered to the client at login
-- Staff-triggered scene effect overlays
-- Self hide and show
-- HP and MP bars
-- INI-driven settings and theme helpers
-- BASS-backed audio with graceful fallback when the native BASS library is missing (this will change soon)
-- Replay behaviour support
-- Moderator tooling support
-- Automated tests for protocol-facing services, asset loaders, replay behaviour and moderator flows
+## Quick start
 
-## Repository Layout
+### Requirements
 
-```text id="2xbeve"
-src/
-  VNO.Client/          Application entry point, views, view models and services
-
-tests/
-  VNO.Client.Tests/    Client-focused unit tests
-
-external/
-  VNO.Core/            Shared protocol and networking submodule
-```
-
-## Requirements
-
-- .NET 10 SDK
+- [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - Git with submodule support
-- A runtime `data/` folder containing the legacy VNO assets
-- Optional: native BASS runtime if you want music and sound playback
+- A compatible VNO runtime content tree
+- Native BASS libraries only when audio playback is required
 
-## Installation
+Windows desktop is represented in the project configuration. Other Avalonia desktop platforms may build from source, but this repository does not publish or test a RID/package matrix.
 
-Clone the repository with submodules:
+### Install and build
 
-```bash id="0k9zgd"
+```bash
 git clone --recurse-submodules https://github.com/Lemonical/VNO.Client.git
 cd VNO.Client
 dotnet restore VNO.Client.slnx
+dotnet build VNO.Client.slnx
 ```
 
-If you already cloned the repository without submodules:
+For an existing clone without its submodule:
 
-```bash id="x9jbi1"
+```bash
 git submodule update --init --recursive
 ```
 
-## Preparing Content
+### Prepare content
 
-Like the legacy client, all runtime content and configuration live in a `data`
-folder next to the built executable, so a default `dotnet run` expects runtime
-content under:
+The application resolves `data/` next to its executable. A Debug run therefore uses `src/VNO.Client/bin/Debug/net10.0/data/`. The build copies the default `settings.ini`; supply the remaining compatible content yourself. The public Master endpoint and application version are shared constants in `VNO.Core`, not player-editable files.
 
-```text id="s0ezs7"
-src/VNO.Client/bin/Debug/net10.0/data/
-```
-
-The runtime content tree is expected to look like this:
-
-```text id="57jkpm"
+```text
 data/
   settings.ini
-  AS.ini
   UI/<design>/design.ini
   characters/<character>/
   background/
@@ -95,77 +74,64 @@ data/
   sounds/
 ```
 
-`settings.ini` and `AS.ini` ship with the app and are copied next to the
-executable on build. Edit those copies (or the ones in your own `data` folder) to
-point the client at a different game or auth server.
+Do not commit licensed runtime content.
 
-## Running
+### Run
 
-Run the client:
-
-```bash id="srn46d"
+```bash
 dotnet run --project src/VNO.Client/VNO.Client.csproj
 ```
 
-For a local full-stack setup:
+For a complete local environment, start Master, start a Server, and then launch Client. Server-list entries carry their own game endpoint. Direct connections currently fall back to `127.0.0.1:16789`, while Server defaults to port `6541`, so direct local testing must align those values.
 
-1. Start `VNO.Master` for account login, version checks and public server discovery.
-2. Start a `VNO.Server` instance for live gameplay traffic.
-3. Launch `VNO.Client`.
+## Configuration summary
 
-One important detail: the client currently defaults to `GameServerPort = 16789`, while `VNO.Server` currently defaults to `ListenPort = 6541`. For direct local connections, change one side so the ports match.
+`ClientSettingsLoader` reads these player-owned settings:
 
-## Configuration
+| File | Setting | Meaning |
+| --- | --- | --- |
+| `data/settings.ini` | `[User] user` | Default display name |
+| `data/settings.ini` | `[Network] transport` | Game transport: `tcp`, `ws`, or `websocket` |
+| `data/settings.ini` | `[Network] tls` | Use TLS for the game WebSocket connection |
+| `data/settings.ini` | `[Discord] presence` | `Off`, `Running`, `PublicServer`, or `PublicServerAndPlayerCount` |
+| `data/settings.ini` | `[Discord] application_id` | Public Discord application ID for local Rich Presence IPC |
 
-Following the legacy client, settings are read from external ini files in the
-`data` folder by [`ClientSettingsLoader`](src/VNO.Client/Services/ClientSettingsLoader.cs),
-not from an `appsettings.json`. Any key that is missing falls back to a built in
-default, so a partial or absent file still starts the client.
+Missing values use built-in defaults. Discord presence stays off unless both a public application ID and a non-`Off` privacy level are configured; never place a client secret or bot token in this file. Only public-directory server names and validated player counts are eligible for presence. The loader does not currently read game host, game port, or heartbeat values from INI files. Theme selection also reads `[DesignStyle] design`; the login flow separately reads and writes `[User] enabled`, `user`, and `pass` for Remember Me. The saved `pass` is reusable legacy credential material and should be protected like a password.
 
-`data/settings.ini`:
+The full runtime-data, theme, audio, configuration, and local-stack guides belong in the VNO.Client GitHub wiki once it is enabled.
 
-- `[User] user`: default local display name
-- `[Connection] server` / `[Connection] port`: direct game server target
-- `[Connection] heartbeat`: keepalive interval in seconds
+## Build, test, and publish
 
-`data/AS.ini`:
-
-- `[AS] 1`: primary Master Server, a bare host or `host:port` (port defaults to 6543)
-
-The data folder name is fixed at `data` next to the executable, matching the
-legacy layout. Environment-variable overrides are not wired up.
-
-## Testing
-
-Run the test suite:
-
-```bash id="6mul4e"
+```bash
+dotnet build VNO.Client.slnx -c Release
 dotnet test VNO.Client.slnx
+dotnet publish src/VNO.Client/VNO.Client.csproj -c Release -o ./publish/client
 ```
 
-The test suite covers asset loading, INI parsing, theme and colour helpers, replay behaviour, moderator flows and the client-to-server message contract.
+The last command produces a framework-dependent publish directory, not an installer.
 
-## Related Repositories
+## Repository layout
 
-- [`VNO.Core`](https://github.com/Lemonical/VNO.Core): shared protocol, message framing, models and TCP transport
-- [`VNO.Master`](https://github.com/Lemonical/VNO.Master): authentication and server-listing service
-- [`VNO.Server`](https://github.com/Lemonical/VNO.Server): game server and staff control surface
+```text
+src/VNO.Client/        Application, views, view models, and services
+tests/VNO.Client.Tests Client unit and behavior tests
+external/VNO.Core/     Shared protocol submodule
+```
+
+## Docker
+
+Client is an interactive desktop application and does not ship a Docker image. Use the Docker deployments in `VNO.Master` and `VNO.Server` for headless infrastructure.
+
+## Ecosystem
+
+- [VNO.Core](https://github.com/Lemonical/VNO.Core) - shared protocol, models and transports
+- [VNO.Master](https://github.com/Lemonical/VNO.Master) - accounts, authentication, news and server directory
+- [VNO.Server](https://github.com/Lemonical/VNO.Server) - game hosting and staff administration
 
 ## Contributing
 
-Contributions are easiest to review when they stay close to the existing split between views, view models and services.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a change. Use the [issue tracker](https://github.com/Lemonical/VNO.Client/issues) for reproducible bugs and feature requests, and never include credentials or private content in reports.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup expectations and pull request guidance.
+## License
 
-Before opening a pull request:
-
-```bash id="kwyl67"
-git submodule update --init --recursive
-dotnet test VNO.Client.slnx
-```
-
-If you change asset loading, replay behaviour, moderator flows or protocol-facing behaviour, include the matching test updates.
-
-## Support
-
-Use the [GitHub issue tracker](https://github.com/Lemonical/VNO.Client/issues) for bugs, regressions, asset-loading problems and client workflow feedback.
+VNO.Client is licensed under the [MIT License](LICENSE).

@@ -1,93 +1,55 @@
 # Contributing to VNO.Client
 
-`VNO.Client` is the Avalonia desktop player client for the Visual Novel Online stack. Contributions should preserve the current split between views, view models and services, while staying compatible with the shared `VNO.Core` protocol contract and the legacy runtime asset layout.
-
-## Prerequisites
-
-- .NET 10 SDK
-- Git with submodule support
-- Legacy runtime content, if you need to exercise asset-driven UI behaviour locally
-- Optional: native BASS runtime, if you need to test music or sound playback
+Contributions should preserve the separation between Avalonia views, view models, and services while remaining compatible with `VNO.Core` and the external legacy content layout.
 
 ## Setup
 
-Clone the repository with submodules:
+Requirements are the .NET 10 SDK, Git with submodule support, and compatible runtime content when testing asset-driven behavior. Native BASS is optional unless the change affects audio.
 
-```bash id="fczhqb"
+```bash
 git clone --recurse-submodules https://github.com/Lemonical/VNO.Client.git
 cd VNO.Client
 dotnet restore VNO.Client.slnx
-```
-
-If you already cloned the repository without submodules:
-
-```bash id="cx5v2q"
-git submodule update --init --recursive
-```
-
-## Development Notes
-
-When making changes, please keep the following in mind:
-
-- Keep protocol-facing behaviour aligned with `external/VNO.Core`.
-- Preserve the split between views, view models and services.
-- Keep asset loading tolerant of partial or missing legacy content unless the change intentionally tightens that contract.
-- Keep runtime content loaded from the `data/` folder rather than embedding legacy assets into the assembly.
-- Avoid mixing unrelated refactors with user-visible or protocol-visible behaviour changes.
-- Prefer small, focused changes that are easier to review.
-- Add comments for non-obvious logic, especially around protocol handling, asset discovery, theme loading, replay behaviour and moderation flows.
-
-## Testing
-
-Run the project test suite before opening a pull request:
-
-```bash id="pz0xg7"
+dotnet build VNO.Client.slnx
 dotnet test VNO.Client.slnx
 ```
 
-Add or update tests when changing:
+Use `git submodule update --init --recursive` if Core was not initialized.
 
-- Asset loading
-- INI parsing
-- Theme and colour helpers
-- Character roster loading
-- Background, big-art or sound lookup
-- Replay behaviour
-- Moderator flows
-- Client-to-server message handling
-- Master Server login or server-list behaviour
-- Configuration loading
+## Change guidelines
 
-## Pull Requests
+- Keep application behavior out of views and code-behind unless it directly depends on visual elements.
+- Keep protocol-facing behavior aligned with `external/VNO.Core`.
+- Preserve tolerant loading for missing or partial legacy content unless deliberately changing that contract.
+- Load player themes and content from `data/`; do not embed or commit licensed runtime assets.
+- Preserve separate Master and game-server connection responsibilities.
+- Treat authentication, handoff, TLS, moderation, and deserialization changes as security-sensitive.
+- Keep changes focused and avoid unrelated formatting or refactoring.
+- Update configuration documentation when a loader key or default changes.
 
-Before opening a pull request, make sure that:
+## Testing
 
-- Submodules are initialised and up to date.
-- The project builds successfully.
-- The test suite passes.
-- Asset-loading or protocol changes are covered by matching tests.
-- Any configuration changes are documented.
-- The pull request explains the user-visible or protocol-visible impact clearly.
+Run `dotnet test VNO.Client.slnx` for every change. Add focused tests when changing:
 
-Please include setup notes if the change depends on local runtime content, BASS, a local `VNO.Master` instance or a local `VNO.Server` instance.
+- INI parsing, configuration defaults, or endpoint selection
+- Themes, colors, characters, rosters, backgrounds, big art, or sound discovery
+- Login, account creation, server discovery, or game handoff
+- Discord presence privacy projection, local IPC framing, sanitization, or failure isolation
+- Message handling, framing assumptions, reconnect behavior, or cancellation
+- Stage, replay, visibility, stats, badges, effects, or moderation flows
 
-Keep unrelated cleanup out of the same pull request unless it is required for the main change.
+Manually exercise the relevant desktop workflow when UI or runtime content behavior changes. State which operating system, content set, Master, and Server configuration you used.
 
-## Issues
+## Documentation
 
-Use GitHub issues to report bugs, regressions, asset-loading problems, client workflow issues or protocol-related concerns.
+Keep the README to a concise overview and quick start. Put full tutorials, theme/content references, configuration matrices, and troubleshooting in the VNO.Client GitHub wiki once it is enabled. Update docs with the behavior change that makes them necessary.
 
-When reporting a bug, please include:
+## Pull requests and issues
 
-- What you expected to happen
-- What actually happened
-- Steps to reproduce the issue
-- Relevant logs or screenshots, if available
-- Your operating system
-- Your .NET SDK version
-- Whether legacy runtime content is present
-- Whether the issue involves `VNO.Master`, `VNO.Server` or local direct connection settings
+A pull request should explain the player-visible impact, include tests, pass the build and test suite, identify Core/Master/Server compatibility effects, and contain no secrets or licensed content. Keep unrelated cleanup separate.
+
+Bug reports should include reproducible steps, expected and actual results, OS, .NET SDK version, relevant repository revisions, content availability, connection mode, and sanitized logs. Do not disclose credentials, bearer tokens, private server data, or exploitable security details publicly.
 
 ## License
 
-By contributing to this repository, you agree that your contributions will be licensed under the MIT License that covers this project.
+By contributing, you agree that your contribution is licensed under this project's [MIT License](LICENSE).
